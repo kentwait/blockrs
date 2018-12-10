@@ -4,8 +4,11 @@
 from collections import OrderedDict
 
 def read_fasta_file_to_dict(path):
-    """Reads a FASTA formatted text file into an
-    ordered dictionary.
+    """Reads a FASTA formatted text file into an ordered dictionary.
+
+    Each entry is represented as a dictionary composed of
+    the ID string <id>, description <description>, and
+    the sequence <sequence>.
 
     Parameters
     ----------
@@ -14,7 +17,7 @@ def read_fasta_file_to_dict(path):
     Returns
     -------
     OrderedDict
-        Dictionary where keys are the ID string and values dictionaries
+        Dictionary where keys are the ID string and values are dictionaries
         composed of the ID string <id>, description <description>, and
         the sequence <sequence>.
 
