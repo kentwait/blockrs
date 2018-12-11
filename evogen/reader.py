@@ -4,7 +4,7 @@
 from collections import OrderedDict
 import os
 
-def read_fasta_file_to_dict(path):
+def read_fasta_file_to_dict(path, description_parser=None):
     """Reads a FASTA formatted text file into an ordered dictionary.
 
     Each entry is represented as a dictionary composed of
@@ -14,6 +14,12 @@ def read_fasta_file_to_dict(path):
     Parameters
     ----------
     path : str
+    description_parser : function
+        Function that parses the description section of the ID line
+        and adds additional keys to the dictionary. The expected input is
+        the description as a string, and outputs a dictionary of key-value
+        pairs parsed from the description. If None, the dictionary
+        will only contain 'id', 'description', and 'sequence' key-values.
 
     Returns
     -------
@@ -38,6 +44,9 @@ def read_fasta_file_to_dict(path):
                     seq_d[name] = {'id': name,
                                    'description': description,
                                    'sequence': seq_string}
+                    if description_parser:
+                        seq_d[name] = dict(list(seq_d[name].items()) +
+                                           list(description_parser(description).items()))
                     seq = []
                 try:
                     name, description = line[1:].split(' ', 1)
@@ -54,11 +63,15 @@ def read_fasta_file_to_dict(path):
             seq_d[name] = {'id': name,
                            'description': description,
                            'sequence': seq_string}
+            if description_parser:
+                seq_d[name] = dict(list(seq_d[name].items()) +
+                                   list(description_parser(description).items()))
     return seq_d
 
 
-def read_fasta_dir_to_dict(dirpath, target_suffix='aln',
-                           expected_count=None, filename_parser=None):
+def read_fasta_dir_to_dict(dirpath, suffix='.aln',
+                           expected_count=None, filename_parser=None,
+                           description_parser=None):
     """Reads a directory of FASTA files and stores data as
     nested dictionaries.
 
@@ -70,13 +83,19 @@ def read_fasta_dir_to_dict(dirpath, target_suffix='aln',
     Parameters
     ----------
     dirpath : str
-    target_suffix : str
+    suffix : str
     expected_count : int
     filename_parser : function
         Function that transforms the filename into something for the key.
         The expected input is the filename (string) and outputs a
         string that will be used as the key. If None, the filename becomes
         the key.
+    description_parser : function
+        Function that parses the description section of the ID line
+        and adds additional keys to the dictionary. The expected input is
+        the description as a string, and outputs a dictionary of key-value
+        pairs parsed from the description. If None, the dictionary
+        will only contain 'id', 'description', and 'sequence' key-values.
 
     Returns
     -------
@@ -95,13 +114,15 @@ def read_fasta_dir_to_dict(dirpath, target_suffix='aln',
     cnt = 0
     sequence_d = {}
     for fname in os.listdir(dirpath):
-        if not fname.endswith(target_suffix):
-            pass
+        if not fname.endswith(suffix):
+            continue
 
         key = filename_parser(fname) if filename_parser else fname
         if key in sequence_d.keys():
             raise KeyError('{} already exists'.format(key))
-        sequence_d[key] = read_fasta_file_to_dict(os.path.join(dirpath, fname))
+        sequence_d[key] = read_fasta_file_to_dict(os.path.join(dirpath, fname),
+                                                  description_parser=description_parser)
+
         cnt += 1
 
     if expected_count is not None:
