@@ -5,7 +5,7 @@ def write_fasta_dict_to_json():
     pass
 
 
-def write_dict_to_fasta_file(d, path, line_width=None):
+def write_dict_to_fasta_file(d, path, line_width=None, description_parser=None):
     """Writes a dictionary of dictionaries into a FASTA-formatted text file.
 
     This function expects a dictionary of dictionaries where the inner
@@ -18,6 +18,9 @@ def write_dict_to_fasta_file(d, path, line_width=None):
     path : str
     line_width : int
         Maximum number of characters per line of sequence.
+    description_parser : function
+        Function that uses the current sequence dictionary to create a
+        string description. If None, the existing description value will be used.
 
     Returns
     -------
@@ -37,6 +40,9 @@ def write_dict_to_fasta_file(d, path, line_width=None):
             for required_k in ['id', 'description', 'sequence']:
                 if required_k not in keys:
                     raise KeyError('{} key not found in <{}> sequence'.format(required_k, k))
+
+            if description_parser:
+                seq_d['description'] = description_parser(seq_d)
 
             if seq_d['description']:
                 print('>{} {}'.format(seq_d['id'], seq_d['description']),
@@ -86,20 +92,18 @@ def write_dict_to_fasta_dir(d, dirpath, suffix='.aln',
 
     """
     # Check if dirpath exists
-    if os.path.exists(dirpath):
+    if not os.path.exists(dirpath):
         os.makedirs(dirpath)
 
     cnt = 0
     for k, seq_d in d.items():
-        fname = k + suffix
+        fname = str(k) + suffix
         if filename_parser:
             fname = filename_parser(k)
 
-        if description_parser:
-            seq_d['description'] = description_parser(seq_d)
-
         path = os.path.join(dirpath, fname)
-        c = write_dict_to_fasta_file(seq_d, path, line_width=line_width)
+        c = write_dict_to_fasta_file(seq_d, path, line_width=line_width,
+                                     description_parser=description_parser)
 
         if verbose:
             print(path, c)
