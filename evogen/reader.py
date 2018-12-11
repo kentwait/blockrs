@@ -2,6 +2,7 @@
 """Helper functions for reading files.
 """
 from collections import OrderedDict
+import os
 
 def read_fasta_file_to_dict(path):
     """Reads a FASTA formatted text file into an ordered dictionary.
@@ -54,3 +55,59 @@ def read_fasta_file_to_dict(path):
                            'description': description,
                            'sequence': seq_string}
     return seq_d
+
+
+def read_fasta_dir_to_dict(dirpath, target_suffix='aln',
+                           expected_count=None, filename_parser=None):
+    """Reads a directory of FASTA files and stores data as
+    nested dictionaries.
+
+    The outer dictionary is used to identify contents from each
+    FASTA file. Each FASTA file is then parsed as an ordered dictionary
+    of sequences composed of the ID string <id>, description <description>,
+    and the sequence <sequence>.
+
+    Parameters
+    ----------
+    dirpath : str
+    target_suffix : str
+    expected_count : int
+    filename_parser : function
+        Function that transforms the filename into something for the key.
+        The expected input is the filename (string) and outputs a
+        string that will be used as the key. If None, the filename becomes
+        the key.
+
+    Returns
+    -------
+    dict
+        Dictionary of OrderedDict where key is the filename or produced
+        by the filename_parser function.
+
+    """
+    # Check if dirpath exists
+    if not os.path.exists(dirpath):
+        raise Exception('{} does not exist'.format(dirpath))
+    else:
+        if not os.path.isdir(dirpath):
+            raise Exception('{} is not a directory'.format(dirpath))
+
+    cnt = 0
+    sequence_d = {}
+    for fname in os.listdir(dirpath):
+        if not fname.endswith(target_suffix):
+            pass
+
+        key = filename_parser(fname) if filename_parser else fname
+        if key in sequence_d.keys():
+            raise KeyError('{} already exists'.format(key))
+        sequence_d[key] = read_fasta_file_to_dict(os.path.join(dirpath, fname))
+        cnt += 1
+
+    if expected_count is not None:
+        if expected_count != cnt:
+            raise Exception('expected {} items, instead '
+                            'processed {} file'.format(expected_count, cnt) +
+                            's' if cnt != 1 else ''
+                           )
+    return sequence_d
