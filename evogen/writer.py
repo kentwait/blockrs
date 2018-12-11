@@ -1,37 +1,109 @@
 import json
+import os
 
 def write_fasta_dict_to_json():
     pass
 
-def write_fasta_dict_to_fasta(fasta_dict, path):
-    """Writes a dictionary as a FASTA-formatted text file.
+
+def write_dict_to_fasta_file(d, path, line_width=None):
+    """Writes a dictionary of dictionaries into a FASTA-formatted text file.
+
+    This function expects a dictionary of dictionaries where the inner
+    dictionary has the following keys: `id`, `description`, and `sequence`.
+    An exception is raised if one of these keys are not found.
 
     Parameters
     ----------
-    fasta_dict : dict
+    d : dict
     path : str
+    line_width : int
+        Maximum number of characters per line of sequence.
 
     Returns
     -------
     int
         Number of sequences written to file.
     """
-    cnt = 0
-    with open(path, 'w') as f:
-        for d in fasta_dict.values():
-            # Error handling
-            if 'id' not in d:
-                raise KeyError('"id" key not found')
-            if 'description' not in d:
-                raise KeyError('"description" key not found')
-            if 'sequence' not in d:
-                raise KeyError('"sequence" key not found')
+    # Check if path exists
+    dirpath = os.path.dirname(path)
+    if not os.path.exists(dirpath):
+        raise Exception('{} does not exist'.format(dirpath))
 
-            if d['description']:
-                print('>{} {}'.format(d['id'], d['description']), file=f)
+    with open(path, 'w') as f:
+        cnt = 0
+        for k, seq_d in d.items():
+            # Check if keys exist
+            keys = seq_d.keys()
+            for required_k in ['id', 'description', 'sequence']:
+                if required_k not in keys:
+                    raise KeyError('{} key not found in <{}> sequence'.format(required_k, k))
+
+            if seq_d['description']:
+                print('>{} {}'.format(seq_d['id'], seq_d['description']),
+                      file=f)
             else:
-                print('>{}'.format(d['id']), file=f)
-            print(d['sequence'], file=f)
+                print('>{}'.format(seq_d['id']), file=f)
+
+            if line_width:
+                s = [seq_d['sequence'][i:i+line_width]
+                     for i in range(0, len(seq_d['sequence']), line_width)]
+                print('\n'.join(s), file=f)
+            else:
+                print(seq_d['sequence'], file=f)
+
             cnt += 1
     return cnt
-    
+
+
+def write_dict_to_fasta_dir(d, dirpath, suffix='.aln',
+                            filename_parser=None, description_parser=None,
+                            line_width=None, verbose=False):
+    """Writes dictionary of sequence dictionaries into FASTA files to be
+    saved into a specified directory.
+
+    Parameters
+    ----------
+    d : dict of dict
+    dirpath : str
+    suffix : str
+        Appended to the end of the key to create the filename.
+        When a filename_parser is specified, this parameter is ignored.
+    filename_parser : function
+        Function that uses the current sequence dictionary to create a filename.
+        The expected input is a dictionary and outputs a string that will be
+        used as the filename. If None, the key and the suffix will be the filename.
+    description_parser : function
+        Function that uses the current sequence dictionary to create a
+        string description. If None, the existing description value will be used.
+    line_width : int
+        Maximum number of characters per line of sequence.
+    verbose : bool
+
+    Returns
+    -------
+    int
+        Number of files written to the filesystem.
+
+    """
+    # Check if dirpath exists
+    if os.path.exists(dirpath):
+        os.makedirs(dirpath)
+
+    cnt = 0
+    for k, seq_d in d.items():
+        fname = k + suffix
+        if filename_parser:
+            fname = filename_parser(k)
+
+        if description_parser:
+            seq_d['description'] = description_parser(seq_d)
+
+        path = os.path.join(dirpath, fname)
+        c = write_dict_to_fasta_file(seq_d, path, line_width=line_width)
+
+        if verbose:
+            print(path, c)
+
+        cnt += 1
+
+    return cnt
