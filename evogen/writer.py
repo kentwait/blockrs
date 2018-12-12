@@ -1,9 +1,7 @@
-import json
+# -*- coding: utf-8 -*-
+"""Helper functions for writing files.
+"""
 import os
-
-def write_fasta_dict_to_json():
-    pass
-
 
 def write_dict_to_fasta_file(d, path, line_width=None, description_parser=None):
     """Writes a dictionary of dictionaries into a FASTA-formatted text file.
@@ -26,6 +24,7 @@ def write_dict_to_fasta_file(d, path, line_width=None, description_parser=None):
     -------
     int
         Number of sequences written to file.
+
     """
     # Check if path exists
     dirpath = os.path.dirname(path)
