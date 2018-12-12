@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+"""Functions to create and modify block data.
+"""
 import numpy as np
 
 def range_to_blocks(range_list):
@@ -168,7 +171,6 @@ def remove_sites(seq, block_list, removed_pos_list, zero_indexed=True):
     # Edit block
     block_pos_array = block_pos_array[rel_pos_array]
     new_block_list = range_to_blocks(block_pos_array)
-
     if not zero_indexed:
         new_block_list = list(map(to_one_index_slice, new_block_list))
 
