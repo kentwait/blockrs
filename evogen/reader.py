@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Helper functions for reading files.
+"""Functions for reading files.
 """
 from collections import OrderedDict
 import os
