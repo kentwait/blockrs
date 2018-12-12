@@ -2,6 +2,7 @@
 """Functions for writing files.
 """
 import os
+import pickle
 
 def write_dict_to_fasta_file(d, path, line_width=None, description_parser=None):
     """Writes a dictionary of dictionaries into a FASTA-formatted text file.
@@ -110,3 +111,41 @@ def write_dict_to_fasta_dir(d, dirpath, suffix='.aln',
         cnt += 1
 
     return cnt
+
+
+def pickle_fasta_dir_dict(description, fasta_d, path, usage=None, **kwargs):
+    """Pickles a nested dicts derived from a directory of FASTA files
+    together with some metadata describing the data.
+
+    This function encapsules the fasta_d within an outer dictionary
+    that is separated into 'data', and 'meta' sections. The fasta_d dictionary
+    is stored under 'data', while 'meta' contains information about the data
+    such as a descriptive text under 'description', and optionally,
+    details about data organization and schema in 'usage'.
+
+    Other sections can be added to 'meta' by passing unlisted keyword arguments.
+
+    By default, this encapsulation assumes two top-level keywords 'meta',
+    and 'data'. Within 'meta', the 'description' key-value pair always exists,
+    and 'usage' may sometimes exist. Other keys are user-specified and
+    are not always guaranteed to exist and its value has no standard form.
+
+    Parameters
+    ----------
+    description : str
+        Describes the dataset
+    fasta_d : dict
+    usage : str, optional
+        Details how the data is organized within the dictionary (schema)
+    **kwargs
+        Other key-value pairs that should be appended to the meta section
+
+    """
+    meta_list = [('description', description)]
+    if usage:
+        meta_list.append(('usage', usage))
+    meta_list += list(kwargs.items())
+
+    packaged_d = {'meta': dict(meta_list), 'data': fasta_d}
+    with open(path, 'wb') as f:
+        pickle.dump(packaged_d, f)
