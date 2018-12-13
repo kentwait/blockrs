@@ -21,7 +21,8 @@ def summarize_group(group):
     pandas.Series
 
     """
-    if np.max(group['pident']) == 100:
+    if np.max(group['pident']) == 100 and \
+       (np.max(group['length']) == np.max(group['slen'])):
         return pd.Series({
             'qaccver': np.max(group['qaccver']),
             'saccver': np.max(group['saccver']),
@@ -114,29 +115,6 @@ def summarize_blast_df(df, summarize_func=summarize_group,
     return filtered_summ_df
 
 
-def reciprocal_blast_match_pairs(forward_blast_df, reverse_blast_df):
-    """Returns the pair of ids that reciprocally match based on
-    forward and reverse blast results.
-
-    Parameters
-    ----------
-    forward_blast_df : pandas.DataFrame
-    reverse_blast_df : pandas.DataFrame
-
-    Returns
-    -------
-    set of tuple
-        Sorted by value of the qeury ID in the forward blast matching.
-
-    """
-    forward_id_set = set(forward_blast_df.index.get_values())
-    reverse_id_set = set(
-        [(j, i) for i, j in reverse_blast_df.index.get_values()]
-    )
-
-    return sorted(forward_id_set.intersection(reverse_id_set))
-
-
 def reciprocal_blast_match_df(forward_blast_df, reverse_blast_df, join='inner'):
     """Returns a concatenated DataFrame containg the forward and reverse
     blast matches joined by an inner join.
@@ -154,19 +132,14 @@ def reciprocal_blast_match_df(forward_blast_df, reverse_blast_df, join='inner'):
         MultiIndex follows the query and subject IDs in forward_blast_df.
 
     """
-    reciprocal_id_list = reciprocal_blast_match_pairs(forward_blast_df,
-                                                      reverse_blast_df)
-
-    recip_fw_df = forward_blast_df.loc[reciprocal_id_list]
-    recip_rv_df = reverse_blast_df.reorder_levels(['saccver', 'qaccver']) \
-                                  .loc[reciprocal_id_list]
-
-    # Temporarily change column names
-    recip_fw_df.columns = ['f_' + label for label in recip_fw_df.columns]
-    recip_rv_df.columns = ['r_' + label for label in recip_rv_df.columns]
+    forward_blast_df.columns = ['f_' + label
+                                for label in forward_blast_df.columns]
+    reverse_blast_df.columns = ['r_' + label
+                                for label in reverse_blast_df.columns]
 
     # Concat df
-    concat_df = pd.concat([recip_fw_df, recip_rv_df], axis=1, join=join)
+    concat_df = pd.concat([forward_blast_df, reverse_blast_df],
+                          axis=1, join=join)
     concat_df.columns = pd.MultiIndex.from_product(
         [['forward', 'reverse'],
          ['pident', 'length', 'mismatch', 'gapopen', 'bitscore', 'qlen', 'slen']
@@ -174,3 +147,23 @@ def reciprocal_blast_match_df(forward_blast_df, reverse_blast_df, join='inner'):
         names=['match', 'property']
     )
     return concat_df
+
+
+def reciprocal_blast_match_pairs(forward_blast_df, reverse_blast_df):
+    """Returns the pair of ids that reciprocally match based on
+    forward and reverse blast results.
+
+    Parameters
+    ----------
+    forward_blast_df : pandas.DataFrame
+    reverse_blast_df : pandas.DataFrame
+
+    Returns
+    -------
+    set of tuple
+        Sorted by value of the qeury ID in the forward blast matching.
+
+    """
+    concat_df = reciprocal_blast_match_df(forward_blast_df, reverse_blast_df,
+                                          join='inner')
+    return sorted(concat_df.index.get_values())
