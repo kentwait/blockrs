@@ -113,7 +113,21 @@ def summarize_blast_df(df, summarize_func=summarize_group,
     return filtered_summ_df
 
 
-def reciprocal_blast_match(df1, df2, filter_func=None):
-    """
-    """
+def reciprocal_blast_match_pairs(forward_blast_df, reverse_blast_df):
+    """Returns the pair of ids that reciprocally match based on
+    forward and reverse blast results.
 
+    Parameters
+    ----------
+    forward_blast_df : pandas.DataFrame
+    reverse_blast_df : pandas.DataFrame
+
+    Returns
+    -------
+    set of tuple
+
+    """
+    forward_id_set = set(forward_blast_df.index.get_values())
+    reverse_id_set = set(reverse_blast_df.index.get_values())
+
+    return forward_id_set.intersection(reverse_id_set)
