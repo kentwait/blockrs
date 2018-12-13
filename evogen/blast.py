@@ -74,7 +74,8 @@ def summarize_blast_df(df, summarize_func=summarize_group,
     pident_threshold : float, optional
         Only summarized results greater than or equal to this value
         will be returned.
-        Value must be greater than or equal to zero and less than 100.
+        Value must be greater than or equal to zero and less than or
+        equal to 100.
     summary_col_labels : list of str, optional
         Columns to be retained in the summarized DataFrame.
     eval_col_name : str, optional
@@ -92,8 +93,8 @@ def summarize_blast_df(df, summarize_func=summarize_group,
         raise ValueError('eval_threshold ({}) must be greater than '
                          'zero'.format(eval_threshold))
     if pident_threshold > 100:
-        raise ValueError('pident_threshold ({}) must be less than '
-                         '100.0'.format(pident_threshold))
+        raise ValueError('pident_threshold ({}) must be less than or '
+                         'equal to 100.0'.format(pident_threshold))
     elif pident_threshold < 0:
         raise ValueError('pident_threshold ({}) must be greater than '
                          'zero'.format(pident_threshold))
@@ -125,9 +126,51 @@ def reciprocal_blast_match_pairs(forward_blast_df, reverse_blast_df):
     Returns
     -------
     set of tuple
+        Sorted by value of the qeury ID in the forward blast matching.
 
     """
     forward_id_set = set(forward_blast_df.index.get_values())
-    reverse_id_set = set(reverse_blast_df.index.get_values())
+    reverse_id_set = set(
+        [(j, i) for i, j in reverse_blast_df.index.get_values()]
+    )
 
-    return forward_id_set.intersection(reverse_id_set)
+    return sorted(forward_id_set.intersection(reverse_id_set))
+
+
+def reciprocal_blast_match_df(forward_blast_df, reverse_blast_df, join='inner'):
+    """Returns a concatenated DataFrame containg the forward and reverse
+    blast matches joined by an inner join.
+
+    Parameters
+    ----------
+    forward_blast_df : pandas.DataFrame
+    reverse_blast_df : pandas.DataFrame
+    join : str, optional
+        Type of join to use. By default, an inner join is performed.
+
+    Returns
+    -------
+    pandas.DataFrame
+        MultiIndex follows the query and subject IDs in forward_blast_df.
+
+    """
+    reciprocal_id_list = reciprocal_blast_match_pairs(forward_blast_df,
+                                                      reverse_blast_df)
+
+    recip_fw_df = forward_blast_df.loc[reciprocal_id_list]
+    recip_rv_df = reverse_blast_df.reorder_levels(['saccver', 'qaccver']) \
+                                  .loc[reciprocal_id_list]
+
+    # Temporarily change column names
+    recip_fw_df.columns = ['f_' + label for label in recip_fw_df.columns]
+    recip_rv_df.columns = ['r_' + label for label in recip_rv_df.columns]
+
+    # Concat df
+    concat_df = pd.concat([recip_fw_df, recip_rv_df], axis=1, join=join)
+    concat_df.columns = pd.MultiIndex.from_product(
+        [['forward', 'reverse'],
+         ['pident', 'length', 'mismatch', 'gapopen', 'bitscore', 'qlen', 'slen']
+        ],
+        names=['match', 'property']
+    )
+    return concat_df
