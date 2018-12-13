@@ -4,7 +4,8 @@
 import os
 import pickle
 
-def write_dict_to_fasta_file(d, path, line_width=None, description_parser=None):
+def write_dict_to_fasta_file(d, path, line_width=None, description_parser=None,
+                             use_key=True):
     """Writes a dictionary of dictionaries into a FASTA-formatted text file.
 
     This function expects a dictionary of dictionaries where the inner
@@ -20,6 +21,9 @@ def write_dict_to_fasta_file(d, path, line_width=None, description_parser=None):
     description_parser : function
         Function that uses the current sequence dictionary to create a
         string description. If None, the existing description value will be used.
+    use_key : bool
+        If True, the string representation of the key will be used as the
+        sequence's ID. Otherwise uses the value in the 'id' key.
 
     Returns
     -------
@@ -44,11 +48,15 @@ def write_dict_to_fasta_file(d, path, line_width=None, description_parser=None):
             if description_parser:
                 seq_d['description'] = description_parser(seq_d)
 
+            sid = seq_d['id']
+            if use_key:
+                sid = str(k)
+
             if seq_d['description']:
-                print('>{} {}'.format(seq_d['id'], seq_d['description']),
+                print('>{} {}'.format(sid, seq_d['description']),
                       file=f)
             else:
-                print('>{}'.format(seq_d['id']), file=f)
+                print('>{}'.format(sid), file=f)
 
             if line_width:
                 s = [seq_d['sequence'][i:i+line_width]
