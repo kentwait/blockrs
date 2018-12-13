@@ -136,13 +136,17 @@ def read_fasta_dir_to_dict(dirpath, suffix='.aln',
 
 
 def read_blast_table(path, sep='\t',
-                     col_labels=['qaccver', 'saccver', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore', 'qlen', 'slen', 'qcovs', 'sstrand']):
+                     col_labels=['qaccver', 'saccver', 'pident', 'length',
+                                 'mismatch', 'gapopen', 'qstart', 'qend',
+                                 'sstart', 'send', 'evalue', 'bitscore', 'qlen',
+                                 'slen', 'qcovs', 'sstrand']):
     """Reads BLAST results as a pandas DataFrame.
 
     Parameters
     ----------
     path : str
     col_labels : list of str
+        Column labels of blast results.
 
     Returns
     -------
@@ -152,4 +156,3 @@ def read_blast_table(path, sep='\t',
     df = pd.read_csv(path, sep=sep, header=None, index_col=None)
     df.columns = col_labels
     return df
-
