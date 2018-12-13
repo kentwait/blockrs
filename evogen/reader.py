@@ -3,6 +3,7 @@
 """
 from collections import OrderedDict
 import os
+import pandas as pd
 
 def read_fasta_file_to_dict(path, description_parser=None):
     """Reads a FASTA formatted text file into an ordered dictionary.
@@ -132,3 +133,23 @@ def read_fasta_dir_to_dict(dirpath, suffix='.aln',
                             's' if cnt != 1 else ''
                            )
     return sequence_d
+
+
+def read_blast_table(path, sep='\t',
+                     col_labels=['qaccver', 'saccver', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore', 'qlen', 'slen', 'qcovs', 'sstrand']):
+    """Reads BLAST results as a pandas DataFrame.
+
+    Parameters
+    ----------
+    path : str
+    col_labels : list of str
+
+    Returns
+    -------
+    DataFrame
+
+    """
+    df = pd.read_csv(path, sep=sep, header=None, index_col=None)
+    df.columns = col_labels
+    return df
+
