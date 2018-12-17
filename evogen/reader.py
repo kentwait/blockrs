@@ -2,6 +2,7 @@
 """Functions for reading files.
 """
 from collections import OrderedDict
+from hashlib import md5
 import os
 import pandas as pd
 
@@ -156,3 +157,91 @@ def read_blast_table(path, sep='\t',
     df = pd.read_csv(path, sep=sep, header=None, index_col=None)
     df.columns = col_labels
     return df
+
+
+def read_geneinfo_seq_file_to_dict(path, id_parser=lambda x: x.split('$')[-1]):
+    """Reads a geneinfo sequence file into an ordered dictionary of sequences.
+
+    Parameters
+    ----------
+    path : str
+    id_parser : function
+        Function that takes in the entire ID line and outputs the
+        desired gene name/ID.
+    
+    Returns
+    -------
+    OrderedDict
+        Each entry is identified by its gene name
+
+    """
+    gene_name = ''
+    seq_name = ''
+    seq = ''
+    in_cds = False
+    in_int = False
+    total_cnt = None
+    cnt = 0
+    sequence_d = OrderedDict()
+    with open(path, 'r') as f:
+        for i, line in enumerate(f.readlines()):
+            line = line.rstrip()
+            # Get item count
+            if i == 0:
+                try:
+                    total_cnt = int(line)
+                except ValueError as e:
+                    print('Expected item count, '
+                          'instead encountered error {}'.format(e))
+
+            if line.startswith('>'):
+                if seq:
+                    sequence_d[gene_name][seq_name] = {
+                        'sequence': seq,
+                        'baselen': len(seq),
+                        'seqtype': 'cds' if seq_name == 'cds' else 'int',
+                        'md5': md5(seq.encode('utf-8')).hexdigest(),
+                    }
+                    # Reset
+                    in_cds = False
+                    in_int = False
+                    seq_name = ''
+                    seq = ''
+                _, gene_name = id_parser(line[1:]) if id_parser else line[1:]
+                if gene_name in sequence_d.keys():
+                    raise KeyError('{} key already present'.format(gene_name))
+                sequence_d[gene_name] = OrderedDict({
+                    'id': gene_name,
+                    'description': 'sid={}, seq_type=cds'.format(line[1:]),
+                })
+                cnt += 1
+            elif line.startswith('cod'):
+                in_cds = True
+                in_int = False
+                seq_name = 'cds'
+                sequence_d[gene_name][seq_name] = ''
+            elif line.startswith('int'):
+                in_cds = False
+                in_int = True
+                seq_name, _ = line.split(':')
+                if seq_name in sequence_d[gene_name]:
+                    raise KeyError('{} intron key already present in {}'.format(
+                        seq_name, gene_name)
+                    )
+                sequence_d[gene_name][seq_name] = ''
+            else:
+                if in_cds:
+                    seq = line.rstrip('$')
+                    in_cds = False
+                elif in_int:
+                    seq = line.rstrip('$')
+                    in_int = False
+        if seq:
+            sequence_d[gene_name][seq_name] = {
+                'sequence': seq,
+                'length': len(seq),
+                'md5': md5(seq.encode('utf-8')).hexdigest(),
+            }
+        if total_cnt is not None and total_cnt != cnt:
+            raise Exception('Expected {} entries, instead got {}'.format(total_cnt, cnt))
+    return sequence_d    
