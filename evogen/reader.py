@@ -7,6 +7,7 @@ from copy import deepcopy
 import os
 import re
 import pandas as pd
+import numpy as np
 from evogen.block import combine_exon_blocks
 
 def read_fasta_file_to_dict(path, description_parser=None):
@@ -520,7 +521,7 @@ def read_genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
                     'geneinfo_id': k,
                     'exon_id': exon_ids[i],
                     'transcribed': True,
-                    'cds_exon_id': cds_cnt,
+                    # 'cds_exon_id': cds_cnt,
                     'baselen': baselen,
                     'from_tss_start': s.start,
                     'from_tss_stop': s.stop,
@@ -538,7 +539,7 @@ def read_genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
                     'geneinfo_id': k,
                     'exon_id': exon_ids[i],
                     'transcribed': False,
-                    'cds_exon_id': None,
+                    # 'cds_exon_id': None,
                     'baselen': baselen,
                     'from_tss_start': s.start,
                     'from_tss_stop': s.stop,
@@ -548,15 +549,15 @@ def read_genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
                     'genome_stop': gstop,
                     'sequence': 'N'*baselen
                 })
-    tr_exon_block_df = pd.DataFrame(tr_exon_blocks_list)
+    exon_df = pd.DataFrame(tr_exon_blocks_list)
     # Set index to geneinfo_id + exon_id (0-based) + transcribed
-    tr_exon_block_df = tr_exon_block_df.set_index(
+    exon_df = exon_df.set_index(
         ['geneinfo_id', 'exon_id', 'transcribed'])
-    tr_exon_block_df = tr_exon_block_df[['cds_exon_id', 'baselen',
-                                         'genome_start', 'genome_stop',
-                                         'from_tss_start', 'from_tss_stop',
-                                         'from_cds_start', 'from_cds_stop',
-                                         'sequence']]
+    exon_df = exon_df[['baselen',
+                       'genome_start', 'genome_stop',
+                       'from_tss_start', 'from_tss_stop',
+                       'from_cds_start', 'from_cds_stop',
+                       'sequence']]
 
     # intron blocks df
     for k, d in intron_d.items():
@@ -567,12 +568,30 @@ def read_genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
         else:
             gstart = tr_meta_d[gid]['genome_start'] - d['from_tss_start']
             gstop = tr_meta_d[gid]['genome_start'] - d['from_tss_stop']
+        intron_d[k]['int_id'] -= 1  # convert to 0-based indexing
         intron_d[k]['genome_start'] = gstart
         intron_d[k]['genome_stop'] = gstop
-    int_df = pd.DataFrame(list(intron_d.values()))
+    intron_df = pd.DataFrame(list(intron_d.values()))
     # Set index to geneinfo_id + int_id (1-based)
-    int_df = int_df.set_index(['geneinfo_id', 'int_id'])
-    int_df = int_df[['cds_int_id', 'transcribed', 'baselen',
-                     'genome_start', 'genome_stop',
-                     'from_tss_start', 'from_tss_stop', 'sequence']]
-    return tr_df, tr_exon_block_df, int_df
+    intron_df = intron_df.set_index(['geneinfo_id', 'int_id'])
+    # Add cds postions
+    # Get cds relative start position
+    cds_start = exon_df.query('transcribed == True')['from_tss_start'] \
+        .groupby('geneinfo_id').min()
+    # Create a temp join df
+    tmp_df = intron_df.join(cds_start, on='geneinfo_id', rsuffix='_cds')
+    tmp_df['from_cds_start'] = np.nan
+    tmp_df['from_cds_stop'] = np.nan
+    tmp_df.loc[tmp_df['transcribed'] == True, 'from_cds_start'] = \
+        tmp_df['from_tss_start'] - tmp_df['from_tss_start_cds']
+    tmp_df.loc[tmp_df['transcribed'] == True, 'from_cds_stop'] = \
+        tmp_df['from_tss_stop'] - tmp_df['from_tss_start_cds']
+    # Put columns into intron_df
+    intron_df['from_cds_start'] = tmp_df['from_cds_start'].copy()
+    intron_df['from_cds_stop'] = tmp_df['from_cds_stop'].copy()
+    intron_df = intron_df[['transcribed', 'baselen',
+                           'genome_start', 'genome_stop',
+                           'from_tss_start', 'from_tss_stop',
+                           'from_cds_start', 'from_cds_stop',
+                           'sequence']]
+    return tr_df, exon_df, intron_df
