@@ -175,3 +175,68 @@ def remove_sites(seq, block_list, removed_pos_list, zero_indexed=True):
         new_block_list = list(map(to_one_index_slice, new_block_list))
 
     return ''.join(seq_array), new_block_list
+
+# Combine exon block lists to get UTR exon blocks
+def combine_exon_blocks(tr_exon_blocks, cds_exon_blocks):
+    # Assumes 0-indexed slices
+
+    # Create transcript exon d
+    raw_exon_blocks = sorted(
+        [slice(s.start, s.stop, -1) for s in tr_exon_blocks] +
+        [slice(s.start, s.stop, 1) for s in cds_exon_blocks]
+    )
+    all_exon_blocks = []
+    exon_id_list = []
+    i = 0
+    id_cnt = 0
+    while i < len(raw_exon_blocks):
+        try:
+            # Case 1: (0, 10, cds=False) and (5, 10, cds=True)
+            # Split to (0, 5, cds=False), (5, 10, cds=True)
+            if (raw_exon_blocks[i].start < raw_exon_blocks[i+1].start) and \
+               (raw_exon_blocks[i].stop == raw_exon_blocks[i+1].stop):
+                # Split
+                first_block = slice(raw_exon_blocks[i].start,
+                                    raw_exon_blocks[i+1].start,
+                                    raw_exon_blocks[i].step)
+                all_exon_blocks.append(first_block)
+                all_exon_blocks.append(raw_exon_blocks[i+1])
+                exon_id_list += [id_cnt, id_cnt]
+                i += 2
+            # Case 2: (0, 5, cds=True), (0, 10, cds=False)
+            # Split to (0, 5, cds=True), (5, 10, cds=False)
+            elif (raw_exon_blocks[i].start == raw_exon_blocks[i+1].start) and \
+                 (raw_exon_blocks[i].stop < raw_exon_blocks[i+1].stop):
+                # Split
+                second_block = slice(raw_exon_blocks[i].stop,
+                                     raw_exon_blocks[i+1].stop,
+                                     raw_exon_blocks[i+1].step)
+                all_exon_blocks.append(raw_exon_blocks[i])
+                all_exon_blocks.append(second_block)
+                exon_id_list += [id_cnt, id_cnt]
+                i += 2
+            # Case 3: (0, 5, cds=True), (0, 5, cds=False)
+            # Adopt the cds block
+            elif (raw_exon_blocks[i].start == raw_exon_blocks[i+1].start) and \
+                 (raw_exon_blocks[i].stop == raw_exon_blocks[i+1].stop):
+                # Overwrite
+                cds_i = i if raw_exon_blocks[i].step == 1 else i+1
+                cds_block = slice(raw_exon_blocks[cds_i].start,
+                                  raw_exon_blocks[cds_i].stop,
+                                  raw_exon_blocks[cds_i].step)
+                all_exon_blocks.append(cds_block)
+                exon_id_list += [id_cnt, id_cnt]
+                i += 2
+            # Default case: No overlap with next block
+            # Add current block
+            else:
+                all_exon_blocks.append(raw_exon_blocks[i])
+                exon_id_list.append(id_cnt)
+                i += 1
+            id_cnt += 1
+        except IndexError:
+            all_exon_blocks.append(raw_exon_blocks[i])
+            exon_id_list.append(id_cnt)
+            i += 1
+            id_cnt += 1
+    return all_exon_blocks, exon_id_list
