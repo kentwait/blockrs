@@ -7,6 +7,7 @@ from copy import deepcopy
 import os
 import re
 import pandas as pd
+from evogen.block import combine_exon_blocks
 
 def read_fasta_file_to_dict(path, description_parser=None):
     """Reads a FASTA formatted text file into an ordered dictionary.
@@ -249,7 +250,7 @@ def read_geneinfo_seq_file_to_dict(path, id_parser=lambda x: x.split('$')[-1]):
     return sequence_d    
 
 
-def read_genpos_file_to_dicts(path):
+def read_genpos_file_to_dicts(path, convert_to_zero_based_index=True):
     # Flags
     geneinfo_finished = False
     transcript_metadata_flag = False
@@ -302,8 +303,7 @@ def read_genpos_file_to_dicts(path):
                 line.startswith('tr_start_site_in_genome'):
                 try:
                     start_loc = re.search(r'\:\s*(\d+)', line).group(1)
-                    # convert to 0-based
-                    tr_meta['genome_start'] = int(start_loc) - 1
+                    tr_meta['genome_start'] = int(start_loc)
                 except AttributeError:
                     raise Exception('Failed to match '
                                     'tr_start_site_in_genome field: {}'.format(line))
@@ -338,9 +338,6 @@ def read_genpos_file_to_dicts(path):
                     slice_blocks = \
                         [slice(*tuple(map(int, s.split('..'))))
                          for s in str_blocks]
-                    # Convert to 0-based
-                    slice_blocks = [slice(s.start - 1, s.stop) 
-                                    for s in slice_blocks]
                     tr_meta['exon_blocks'] = slice_blocks
                 except AttributeError:
                     raise Exception('Failed to match for'
@@ -370,8 +367,7 @@ def read_genpos_file_to_dicts(path):
                 line.startswith('start_loc_cds'):
                 try:
                     start_loc = re.search(r'\:\s*(\d+)', line).group(1)
-                    # Convert to 0-based
-                    cds_data['genome_start'] = int(start_loc) - 1
+                    cds_data['genome_start'] = int(start_loc)
                 except AttributeError:
                     raise Exception('Failed to match for'
                                     'start_loc_cds: {}'.format(line))
@@ -397,11 +393,8 @@ def read_genpos_file_to_dicts(path):
                 try:
                     str_blocks = re.findall(r'\d+\.\.\d+', line)
                     slice_blocks = \
-                        [slice(*tuple(map(int, s.split('..')))) for s in   
-                         str_blocks]
-                    # Convert to 0-based
-                    slice_blocks = [slice(s.start - 1, s.stop) 
-                                    for s in slice_blocks]
+                        [slice(*tuple(map(int, s.split('..')))) 
+                         for s in str_blocks]
                     cds_data['exon_blocks'] = slice_blocks
                 except AttributeError:
                     raise Exception('Failed to match for'
@@ -418,9 +411,8 @@ def read_genpos_file_to_dicts(path):
                 cds_d[geneinfo_id] = deepcopy(cds_data)
                 cds_data = {}
                 cds_metadata_flag = False
-                
             # Intron metadata
-            elif line.startswith('intron_dat'):                
+            elif line.startswith('intron_dat'):
                 intron_metadata_flag = True
                 cds_metadata_flag = False  # redundant
             elif intron_metadata_flag and line.startswith('intron #'):
@@ -438,7 +430,6 @@ def read_genpos_file_to_dicts(path):
                     cds_metadata_flag = False
                     intron_metadata_flag = False
                     continue
-                
                 if not intron_coords_finished:
                     try:
                         match = list(map(int, re.findall(r'\d+', line)))
@@ -451,7 +442,7 @@ def read_genpos_file_to_dicts(path):
                             'transcribed': False if match[1] == 1 else True,
                             'baselen': match[3],
                             # Convert to 0-based
-                            'from_tss_start': match[4] - 1,
+                            'from_tss_start': match[4],
                             'from_tss_stop': match[5],
                         }
                         
@@ -468,4 +459,120 @@ def read_genpos_file_to_dicts(path):
                     intron_d[key] = deepcopy(int_data)
                     int_data = {}
                     intron_coords_finished = False
+    if convert_to_zero_based_index:
+        for gid, d in tr_meta_d.items():
+            if tr_meta_d[gid]['genome_start'] < tr_meta_d[gid]['genome_stop']:
+                tr_meta_d[gid]['genome_start'] -= 1
+            else:
+                tr_meta_d[gid]['genome_stop'] -= 1
+            tr_meta_d[gid]['exon_blocks'] = [slice(s.start - 1, s.stop)
+                                            for s in d['exon_blocks']]
+        for gid, d in cds_d.items():
+            if tr_meta_d[gid]['genome_start'] < tr_meta_d[gid]['genome_stop']:
+                cds_d[gid]['genome_start'] -= 1
+            else:
+                cds_d[gid]['genome_stop'] -= 1
+            cds_d[gid]['exon_blocks'] = [slice(s.start - 1, s.stop)
+                                        for s in d['exon_blocks']]
+        for int_id in intron_d.keys():
+            intron_d[int_id]['from_tss_start'] -= 1
+
     return tr_meta_d, cds_d, intron_d
+
+def read_genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
+    tr_meta_d, cds_d, intron_d = \
+        read_genpos_file_to_dicts(path,convert_to_zero_based_index)
+
+    # create transcript metadata df
+    # transcript metadata
+    tr_cols = ['geneinfo_id', 'chromosome', 'scaffold',
+               'forward', 'genome_start', 'genome_stop',
+               'baselen', 'exon_count', 'intron_count']
+    tr_df = pd.DataFrame.from_dict(tr_meta_d,
+                                   orient='index',
+                                   columns=tr_cols)
+    # add 'exon_blocks' column
+    tr_df['exon_blocks'] = [';'.join(['{}:{}'.format(s.start, s.stop)
+                                      for s in d['exon_blocks']])
+                            for k, d in tr_meta_d.items()]
+    # Set index to geneinfo_id
+    tr_df = tr_df.set_index('geneinfo_id')
+
+    # exon blocks df
+    # can reconstruct cds_df from this dataframe
+    tr_exon_blocks_list = []
+    for k, d in cds_d.items():
+        all_exon_blocks, exon_ids = \
+            combine_exon_blocks(tr_meta_d[k]['exon_blocks'], d['exon_blocks'])
+        assert len(all_exon_blocks) == len(exon_ids)
+        from_cds_start = 0
+        cds_cnt = 1  # 1-based index
+        for i, s in enumerate(all_exon_blocks):
+            baselen = s.stop - s.start
+            if tr_meta_d[k]['forward']:
+                gstart = tr_meta_d[k]['genome_start'] + s.start
+                gstop = tr_meta_d[k]['genome_start'] + s.stop
+            else:
+                gstart = tr_meta_d[k]['genome_start'] - s.start
+                gstop = tr_meta_d[k]['genome_start'] - s.stop
+            if s.step == 1:
+                tr_exon_blocks_list.append({
+                    'geneinfo_id': k,
+                    'exon_id': exon_ids[i],
+                    'transcribed': True,
+                    'cds_exon_id': cds_cnt,
+                    'baselen': baselen,
+                    'from_tss_start': s.start,
+                    'from_tss_stop': s.stop,
+                    'from_cds_start': from_cds_start,
+                    'from_cds_stop': from_cds_start + baselen,
+                    'genome_start': gstart,
+                    'genome_stop': gstop,
+                    'sequence': d['sequence'][from_cds_start:
+                                              from_cds_start + baselen]
+                })
+                from_cds_start += baselen
+                cds_cnt += 1
+            else:
+                tr_exon_blocks_list.append({
+                    'geneinfo_id': k,
+                    'exon_id': exon_ids[i],
+                    'transcribed': False,
+                    'cds_exon_id': None,
+                    'baselen': baselen,
+                    'from_tss_start': s.start,
+                    'from_tss_stop': s.stop,
+                    'from_cds_start': None,
+                    'from_cds_stop': None,
+                    'genome_start': gstart,
+                    'genome_stop': gstop,
+                    'sequence': 'N'*baselen
+                })
+    tr_exon_block_df = pd.DataFrame(tr_exon_blocks_list)
+    # Set index to geneinfo_id + exon_id (0-based) + transcribed
+    tr_exon_block_df = tr_exon_block_df.set_index(
+        ['geneinfo_id', 'exon_id', 'transcribed'])
+    tr_exon_block_df = tr_exon_block_df[['cds_exon_id', 'baselen',
+                                         'genome_start', 'genome_stop',
+                                         'from_tss_start', 'from_tss_stop',
+                                         'from_cds_start', 'from_cds_stop',
+                                         'sequence']]
+
+    # intron blocks df
+    for k, d in intron_d.items():
+        gid, _ = k
+        if tr_meta_d[gid]['forward']:
+            gstart = tr_meta_d[gid]['genome_start'] + d['from_tss_start']
+            gstop = tr_meta_d[gid]['genome_start'] + d['from_tss_stop']
+        else:
+            gstart = tr_meta_d[gid]['genome_start'] - d['from_tss_start']
+            gstop = tr_meta_d[gid]['genome_start'] - d['from_tss_stop']
+        intron_d[k]['genome_start'] = gstart
+        intron_d[k]['genome_stop'] = gstop
+    int_df = pd.DataFrame(list(intron_d.values()))
+    # Set index to geneinfo_id + int_id (1-based)
+    int_df = int_df.set_index(['geneinfo_id', 'int_id'])
+    int_df = int_df[['cds_int_id', 'transcribed', 'baselen',
+                     'genome_start', 'genome_stop',
+                     'from_tss_start', 'from_tss_stop', 'sequence']]
+    return tr_df, tr_exon_block_df, int_df
