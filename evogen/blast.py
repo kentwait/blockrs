@@ -38,7 +38,7 @@ def make_blast_db(path, output_path):
     """
     cmd = MAKEBLASTDB_CMD_TEMPLATE.format(ffn=path, out=output_path)
     try:
-        p = proc.run(cmd.split(), check=True)
+        p = proc.run(cmd, check=True, shell=True)
     except proc.CalledProcessError as e:
         raise e
     return p.returncode
@@ -89,7 +89,7 @@ def blastn_match(fasta_path, db_path, report_path,
         threads=threads
     )
     try:
-        proc.run(cmd.split(), check=True)
+        proc.run(cmd, check=True, shell=True)
     except proc.CalledProcessError as e:
         raise e
     return read_blast_table(report_path)
@@ -233,7 +233,7 @@ def reciprocal_blast_match_df(forward_blast_df, reverse_blast_df, join='inner',
 
     # Concat df
     concat_df = pd.concat([forward_blast_df, reverse_blast_df],
-                          axis=1, join=join)
+                        axis=1, join=join, names=['qaccver', 'saccver'])
     concat_df.columns = pd.MultiIndex.from_product(
         [['forward', 'reverse'], col_labels],
         names=['match', 'property']
