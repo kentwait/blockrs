@@ -3,7 +3,9 @@
 """
 from collections import OrderedDict
 from hashlib import md5
+from copy import deepcopy
 import os
+import re
 import pandas as pd
 
 def read_fasta_file_to_dict(path, description_parser=None):
@@ -245,3 +247,225 @@ def read_geneinfo_seq_file_to_dict(path, id_parser=lambda x: x.split('$')[-1]):
         if total_cnt is not None and total_cnt != cnt:
             raise Exception('Expected {} entries, instead got {}'.format(total_cnt, cnt))
     return sequence_d    
+
+
+def read_genpos_file_to_dicts(path):
+    # Flags
+    geneinfo_finished = False
+    transcript_metadata_flag = False
+    tr_exon_num_finished = False
+    cds_metadata_flag = False
+    cds_exon_num_finished = False
+    cds_exon_coords_finished = False
+    intron_metadata_flag = False
+    intron_num_finished = False
+    intron_coords_finished = False
+    # temp dicts
+    tr_meta = {}
+    cds_data = {}
+    int_data = {}
+    # temp vars
+    geneinfo_id = None
+
+    # Read to ordered dicts
+    tr_meta_d = OrderedDict()
+    cds_d = OrderedDict()
+    intron_d = OrderedDict()
+    with open(path, 'r') as f:
+        for line in f.readlines():
+            line = line.rstrip()
+            # Skip comment lines
+            if line.startswith('/*'):
+                continue
+            # ID line
+            if line.startswith('>'):
+                try:
+                    geneinfo_id = int(line[1:])
+                    tr_meta = {
+                        'geneinfo_id': geneinfo_id
+                    }
+                except ValueError as e:
+                    raise e
+                geneinfo_finished = True
+            # Chromosome metadata
+            elif geneinfo_finished:
+                chr_pos, chr_scaffold, orientation = line.split('_')
+                tr_meta['chromosome'] = chr_pos
+                # dont convert scaffold number to 0-index
+                tr_meta['scaffold'] = int(chr_scaffold)
+                tr_meta['forward'] = True if orientation == '+' else False
+                geneinfo_finished = False
+            # Transcript metadata
+            elif line.startswith('tr_dat'):
+                transcript_metadata_flag = True
+            elif transcript_metadata_flag and \
+                line.startswith('tr_start_site_in_genome'):
+                try:
+                    start_loc = re.search(r'\:\s*(\d+)', line).group(1)
+                    # convert to 0-based
+                    tr_meta['genome_start'] = int(start_loc) - 1
+                except AttributeError:
+                    raise Exception('Failed to match '
+                                    'tr_start_site_in_genome field: {}'.format(line))
+            elif transcript_metadata_flag and \
+                line.startswith('tr_end_site_in_genome'):
+                try:
+                    stop_loc = re.search(r'\:\s*(\d+)', line).group(1)
+                    tr_meta['genome_stop'] = int(stop_loc)
+                except AttributeError:
+                    raise Exception('Failed to match '
+                                    'tr_end_site_in_genome field: {}'.format(line))
+            elif transcript_metadata_flag and \
+                line.startswith('tr_length'):
+                try:
+                    baselen = re.search(r'\:\s*(\d+)', line).group(1)
+                    tr_meta['baselen'] = int(baselen)
+                except AttributeError:
+                    raise Exception('Failed to match for '
+                                    'tr_length field: {}'.format(line))
+            elif transcript_metadata_flag and \
+                line.startswith('tr_exon_num'):
+                try:
+                    exon_num = re.search(r'\:\s*(\d+)', line).group(1)
+                    tr_meta['exon_count'] = int(exon_num)
+                except AttributeError:
+                    raise Exception('Failed to match for '
+                                    'tr_exon_num field: {}'.format(line))
+                tr_exon_num_finished = True
+            elif transcript_metadata_flag and tr_exon_num_finished:
+                try:
+                    str_blocks = re.findall(r'\d+\.\.\d+', line)
+                    slice_blocks = \
+                        [slice(*tuple(map(int, s.split('..'))))
+                         for s in str_blocks]
+                    # Convert to 0-based
+                    slice_blocks = [slice(s.start - 1, s.stop) 
+                                    for s in slice_blocks]
+                    tr_meta['exon_blocks'] = slice_blocks
+                except AttributeError:
+                    raise Exception('Failed to match for'
+                                    'exon coordinates: {}'.format(line))
+                tr_exon_num_finished = False
+                # Add to ordered dict
+                tr_meta_d[geneinfo_id] = deepcopy(tr_meta)
+                tr_meta = {}
+                transcript_metadata_flag = False
+                
+            # CDS metadata
+            elif line.startswith('cds_dat'):
+                cds_metadata_flag = True
+                transcript_metadata_flag = False  # redundant
+                cds_data = {
+                    'geneinfo_id': geneinfo_id,
+                }
+            elif cds_metadata_flag and \
+                line.startswith('cds_len'):
+                try:
+                    baselen = re.search(r'\:\s*(\d+)', line).group(1)
+                    cds_data['cds_len'] = int(baselen)
+                except AttributeError:
+                    raise Exception('Failed to match for'
+                                    'cds_len field: {}'.format(line))
+            elif cds_metadata_flag and \
+                line.startswith('start_loc_cds'):
+                try:
+                    start_loc = re.search(r'\:\s*(\d+)', line).group(1)
+                    # Convert to 0-based
+                    cds_data['genome_start'] = int(start_loc) - 1
+                except AttributeError:
+                    raise Exception('Failed to match for'
+                                    'start_loc_cds: {}'.format(line))
+            elif cds_metadata_flag and \
+                line.startswith('end_loc_cds'):
+                try:
+                    stop_loc = re.search(r'\:\s*(\d+)', line).group(1)
+                    cds_data['genome_stop'] = int(stop_loc)
+                except AttributeError:
+                    raise Exception('Failed to match for'
+                                    'end_loc_cds: {}'.format(line))
+            elif cds_metadata_flag and \
+                line.startswith('cds_exon_num'):
+                try:
+                    exon_num = re.search(r'\:\s*(\d+)', line).group(1)
+                    cds_data['exon_count'] = int(exon_num)
+                except AttributeError:
+                    raise Exception('Failed to match for'
+                                    'cds_exon_num: {}'.format(line))
+                cds_exon_num_finished = True
+            elif cds_metadata_flag and \
+                cds_exon_num_finished:
+                try:
+                    str_blocks = re.findall(r'\d+\.\.\d+', line)
+                    slice_blocks = \
+                        [slice(*tuple(map(int, s.split('..')))) for s in   
+                         str_blocks]
+                    # Convert to 0-based
+                    slice_blocks = [slice(s.start - 1, s.stop) 
+                                    for s in slice_blocks]
+                    cds_data['exon_blocks'] = slice_blocks
+                except AttributeError:
+                    raise Exception('Failed to match for'
+                                    'cds exon coordinates: {}'.format(line))
+                cds_exon_num_finished = False
+                cds_exon_coords_finished = True
+            elif cds_metadata_flag and \
+                cds_exon_coords_finished:
+                cds_data['sequence'] = line
+                cds_exon_coords_finished = False
+                # Add to ordered dict
+                if geneinfo_id in cds_d.keys():
+                    raise KeyError('{} already exists in cds dictionary'.format(geneinfo_id))
+                cds_d[geneinfo_id] = deepcopy(cds_data)
+                cds_data = {}
+                cds_metadata_flag = False
+                
+            # Intron metadata
+            elif line.startswith('intron_dat'):                
+                intron_metadata_flag = True
+                cds_metadata_flag = False  # redundant
+            elif intron_metadata_flag and line.startswith('intron #'):
+                try:
+                    int_num = re.search(r'\:\s*(\d+)', line).group(1)
+                    tr_meta_d[geneinfo_id]['intron_count'] = int(int_num)  # add to tr_meta_d
+                except AttributeError:
+                    raise Exception('Failed to match for'
+                                    'intron_num field: {}'.format(line))
+                intron_num_finished = True
+            elif intron_metadata_flag and intron_num_finished:
+                if line.startswith('-'):
+                    geneinfo_id = ''
+                    transcript_metadata_flag = False
+                    cds_metadata_flag = False
+                    intron_metadata_flag = False
+                    continue
+                
+                if not intron_coords_finished:
+                    try:
+                        match = list(map(int, re.findall(r'\d+', line)))
+                        int_data = {
+                            'geneinfo_id': geneinfo_id,
+                            'int_id': match[0],
+                            # 'coding_type_id': match[1],  # 1: utr, 2: cds
+                            # 'coding_int_id': match[2],   # 4xx: utr, 5xx: cds
+                            'cds_int_id': None if match[1] == 1 else (match[2] - 500),
+                            'transcribed': False if match[1] == 1 else True,
+                            'baselen': match[3],
+                            # Convert to 0-based
+                            'from_tss_start': match[4] - 1,
+                            'from_tss_stop': match[5],
+                        }
+                        
+                    except Exception as e:
+                        print(e, line, sep='\n')
+                    intron_coords_finished = True
+                else:
+                    int_data['sequence'] = line
+                    # Add to transcript_metadata
+                    key = (geneinfo_id, int_data['int_id'])
+                    if key in intron_d.keys():
+                        raise KeyError('{} already exists in intron dictionary'.format(
+                            str(key)))
+                    intron_d[key] = deepcopy(int_data)
+                    int_data = {}
+                    intron_coords_finished = False
+    return tr_meta_d, cds_d, intron_d
