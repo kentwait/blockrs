@@ -225,7 +225,7 @@ def combine_exon_blocks(tr_exon_blocks, cds_exon_blocks):
                                   raw_exon_blocks[cds_i].stop,
                                   raw_exon_blocks[cds_i].step)
                 all_exon_blocks.append(cds_block)
-                exon_id_list += [id_cnt, id_cnt]
+                exon_id_list += [id_cnt]
                 i += 2
             # Default case: No overlap with next block
             # Add current block
