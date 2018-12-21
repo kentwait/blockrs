@@ -6,6 +6,7 @@ from hashlib import md5
 from copy import deepcopy
 import os
 import re
+import sqlite3 as sq
 import pandas as pd
 import numpy as np
 from evogen.block import combine_exon_blocks
@@ -229,8 +230,9 @@ def read_geneinfo_seq_file_to_dict(path, id_parser=lambda x: x.split('$')[-1]):
                 in_int = True
                 seq_name, _ = line.split(':')
                 if seq_name in sequence_d[gene_name]:
-                    raise KeyError('{} intron key already present in {}'.format(
-                        seq_name, gene_name)
+                    raise KeyError(
+                        '{} intron key already present in {}'.format(seq_name,
+                                                                     gene_name)
                     )
                 sequence_d[gene_name][seq_name] = ''
             else:
@@ -248,7 +250,7 @@ def read_geneinfo_seq_file_to_dict(path, id_parser=lambda x: x.split('$')[-1]):
             }
         if total_cnt is not None and total_cnt != cnt:
             raise Exception('Expected {} entries, instead got {}'.format(total_cnt, cnt))
-    return sequence_d    
+    return sequence_d
 
 
 def read_genpos_file_to_dicts(path, convert_to_zero_based_index=True):
@@ -348,7 +350,6 @@ def read_genpos_file_to_dicts(path, convert_to_zero_based_index=True):
                 tr_meta_d[geneinfo_id] = deepcopy(tr_meta)
                 tr_meta = {}
                 transcript_metadata_flag = False
-                
             # CDS metadata
             elif line.startswith('cds_dat'):
                 cds_metadata_flag = True
@@ -394,7 +395,7 @@ def read_genpos_file_to_dicts(path, convert_to_zero_based_index=True):
                 try:
                     str_blocks = re.findall(r'\d+\.\.\d+', line)
                     slice_blocks = \
-                        [slice(*tuple(map(int, s.split('..')))) 
+                        [slice(*tuple(map(int, s.split('..'))))
                          for s in str_blocks]
                     cds_data['exon_blocks'] = slice_blocks
                 except AttributeError:
@@ -446,7 +447,6 @@ def read_genpos_file_to_dicts(path, convert_to_zero_based_index=True):
                             'from_tss_start': match[4],
                             'from_tss_stop': match[5],
                         }
-                        
                     except Exception as e:
                         print(e, line, sep='\n')
                     intron_coords_finished = True
@@ -467,14 +467,14 @@ def read_genpos_file_to_dicts(path, convert_to_zero_based_index=True):
             else:
                 tr_meta_d[gid]['genome_stop'] -= 1
             tr_meta_d[gid]['exon_blocks'] = [slice(s.start - 1, s.stop)
-                                            for s in d['exon_blocks']]
+                                             for s in d['exon_blocks']]
         for gid, d in cds_d.items():
             if tr_meta_d[gid]['genome_start'] < tr_meta_d[gid]['genome_stop']:
                 cds_d[gid]['genome_start'] -= 1
             else:
                 cds_d[gid]['genome_stop'] -= 1
             cds_d[gid]['exon_blocks'] = [slice(s.start - 1, s.stop)
-                                        for s in d['exon_blocks']]
+                                         for s in d['exon_blocks']]
         for int_id in intron_d.keys():
             intron_d[int_id]['from_tss_start'] -= 1
 
@@ -482,7 +482,7 @@ def read_genpos_file_to_dicts(path, convert_to_zero_based_index=True):
 
 def read_genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
     tr_meta_d, cds_d, intron_d = \
-        read_genpos_file_to_dicts(path,convert_to_zero_based_index)
+        read_genpos_file_to_dicts(path, convert_to_zero_based_index)
 
     # create transcript metadata df
     # transcript metadata
@@ -595,3 +595,43 @@ def read_genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
                            'from_cds_start', 'from_cds_stop',
                            'sequence']]
     return tr_df, exon_df, intron_df
+
+
+def read_sqlite_transcript_to_df(db_path, table_name='Metadata'):
+    select_sql = 'SELECT * FROM {};'.format(table_name)
+    with sq.connect(db_path) as conn:
+        df = pd.read_sql(select_sql, conn,
+                         index_col='geneinfo_id')
+        df = df[['chromosome', 'scaffold', 'forward',
+                 'genome_start', 'genome_stop', 'baselen',
+                 'exon_count', 'intron_count']]
+        return df
+
+
+def read_sqlite_exon_to_df(db_path, table_name='Exons'):
+    select_sql = 'SELECT * FROM {};'.format(table_name)
+    with sq.connect(db_path) as conn:
+        df = pd.read_sql(select_sql, conn)
+        df = df[['geneinfo_id', 'exon_id', 'transcribed',
+                 'baselen',
+                 'genome_start', 'genome_stop',
+                 'from_tss_start', 'from_tss_stop',
+                 'from_cds_start', 'from_cds_stop',
+                 'sequence']]
+        df['transcribed'] = df['transcribed'].astype(bool)
+        df.set_index(['geneinfo_id', 'exon_id', 'transcribed'], inplace=True)
+        return df
+
+
+def read_sqlite_intron_to_df(db_path, table_name='Introns'):
+    select_sql = 'SELECT * FROM {};'.format(table_name)
+    with sq.connect(db_path) as conn:
+        df = pd.read_sql(select_sql, conn, 
+                         index_col=['geneinfo_id', 'int_id'])
+        df = df[['transcribed', 'baselen',
+                 'genome_start', 'genome_stop', 
+                 'from_tss_start', 'from_tss_stop', 
+                 'from_cds_start', 'from_cds_stop',
+                 'sequence']]
+        df['transcribed'] = df['transcribed'].astype(bool)
+        return df
