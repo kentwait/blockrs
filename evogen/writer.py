@@ -3,6 +3,7 @@
 """
 import os
 import pickle
+import sqlite3 as sq
 
 def write_dict_to_fasta_file(d, path, line_width=None, description_parser=None,
                              use_key=True):
@@ -157,3 +158,81 @@ def pickle_fasta_dir_dict(description, fasta_d, path, usage=None, **kwargs):
     packaged_d = {'meta': dict(meta_list), 'data': fasta_d}
     with open(path, 'wb') as f:
         pickle.dump(packaged_d, f)
+
+
+def write_df_to_sqlite(df, db_path, table_name, create_table_sql, 
+                       drop_is_exists=False):
+    if drop_is_exists:
+        with sq.connect(db_path) as conn:
+            c = conn.cursor()
+            c.execute('DROP TABLE IF EXISTS {};'.format(table_name))
+            c.execute(create_table_sql)
+    # Append data
+    with sq.connect(db_path) as conn:
+        c = conn.cursor()
+        df.to_sql(table_name, conn, if_exists='append', index=True)
+        conn.commit()
+        # Get total number
+        count_sql = 'SELECT COUNT(*) FROM {};'.format(table_name)
+        return conn.execute(count_sql).fetchone()[0]
+
+
+def write_exon_df_to_sqlite(df, db_path, drop_is_exists=False,
+                            table_name='Exons'):
+    exon_table_sql = """
+        CREATE TABLE "Exons" (
+            "id" INTEGER PRIMARY KEY,
+            "geneinfo_id" INTEGER NOT NULL,
+            "exon_id" INTEGER NOT NULL,
+            "transcribed" INTEGER NOT NULL,
+            "baselen" INTEGER NOT NULL,
+            "genome_start" INTEGER NOT NULL,
+            "genome_stop" INTEGER NOT NULL,
+            "from_tss_start" INTEGER NOT NULL,
+            "from_tss_stop" INTEGER NOT NULL,
+            "from_cds_start" INTEGER,
+            "from_cds_stop" INTEGER,
+            "sequence" TEXT NOT NULL );
+        """
+    return write_df_to_sqlite(df, db_path, table_name, exon_table_sql,
+                              drop_is_exists=drop_is_exists)
+
+
+def write_intron_df_to_sqlite(df, db_path, drop_is_exists=False,
+                                  table_name='Introns'):
+    exon_table_sql = """
+        CREATE TABLE "Introns" (
+            "id" INTEGER PRIMARY KEY,
+            "geneinfo_id" INTEGER NOT NULL,
+            "int_id" INTEGER NOT NULL,
+            "transcribed" INTEGER NOT NULL,
+            "baselen" INTEGER NOT NULL,
+            "genome_start" INTEGER NOT NULL,
+            "genome_stop" INTEGER NOT NULL,
+            "from_tss_start" INTEGER NOT NULL,
+            "from_tss_stop" INTEGER NOT NULL,
+            "from_cds_start" INTEGER,
+            "from_cds_stop" INTEGER,
+            "sequence" TEXT NOT NULL );
+        """
+    return write_df_to_sqlite(df, db_path, table_name, exon_table_sql,
+                              drop_is_exists=drop_is_exists)
+
+
+def write_transcript_df_to_sqlite(df, db_path, drop_is_exists=False,
+                                  table_name='Metadata'):
+    exon_table_sql = """
+        CREATE TABLE "Metadata" (
+            "id" INTEGER PRIMARY KEY,
+            "geneinfo_id" INTEGER NOT NULL,
+            "chromosome" TEXT NOT NULL,
+            "scaffold" INTEGER NOT NULL,
+            "forward" INTEGER NOT NULL,
+            "genome_start" INTEGER NOT NULL,
+            "genome_stop" INTEGER NOT NULL,
+            "baselen" INTEGER NOT NULL,
+            "exon_count" INTEGER,
+            "intron_count" INTEGER );
+        """
+    return write_df_to_sqlite(df, db_path, table_name, exon_table_sql,
+                              drop_is_exists=drop_is_exists)
