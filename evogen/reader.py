@@ -493,9 +493,9 @@ def read_genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
                                    orient='index',
                                    columns=tr_cols)
     # add 'exon_blocks' column
-    tr_df['exon_blocks'] = [';'.join(['{}:{}'.format(s.start, s.stop)
-                                      for s in d['exon_blocks']])
-                            for k, d in tr_meta_d.items()]
+    # tr_df['exon_blocks'] = [';'.join(['{}:{}'.format(s.start, s.stop)
+    #                                   for s in d['exon_blocks']])
+    #                         for k, d in tr_meta_d.items()]
     # Set index to geneinfo_id
     tr_df = tr_df.set_index('geneinfo_id')
 
