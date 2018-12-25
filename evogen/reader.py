@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Functions for reading files.
 """
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from hashlib import md5
 from copy import deepcopy
 import os
@@ -10,6 +10,7 @@ import sqlite3 as sq
 import pandas as pd
 import numpy as np
 from evogen.block import combine_exon_blocks
+from evogen.utils import summarize_ancestral_prob_df
 
 def read_fasta_file_to_dict(path, description_parser=None):
     """Reads a FASTA formatted text file into an ordered dictionary.
@@ -664,7 +665,7 @@ def read_sqlite_exon_to_df(db_path, table_name='Exons'):
     Returns
     -------
     pandas.DataFrame
-    
+
     """
     select_sql = 'SELECT * FROM {};'.format(table_name)
     with sq.connect(db_path) as conn:
@@ -705,3 +706,295 @@ def read_sqlite_intron_to_df(db_path, table_name='Introns'):
                  'sequence']]
         df['transcribed'] = df['transcribed'].astype(bool)
         return df
+
+
+def read_btw_counts_file_to_dict(path,
+                                 anc_states_keyword='ms_m*',
+                                 labels=['y', 'e', 'm1', 'm2', 's1', 's2']):
+    """Reads the ancestral configuration counts file from the BTW analysis
+    into two dictionaries for the counts and the probabilities, respectively.
+
+    Parameters
+    ----------
+    path : str
+    anc_states_keyword : str
+        Refers to the labels of ancestral states whose joint probability is
+        indicated in the BTW analysis file. Default is 'ms_m*' indicating the
+        joint state probabilities are for the Dmel-Dsim ancestor and the
+        Dmel population ancestor.
+    labels : list of str
+        Labels to used to indicate the identity of each character in the
+        observed state configuration pattern.
+    
+    Returns
+    -------
+    tuple of dict
+        Returns a dictionary of lists for the counts a pattern is observed,
+        and a dictionary of lists for the probabilities of each ancestral
+        state pair, for each pattern observed.
+
+    Notes
+    -----
+    The ancestral configuration counts file is the second of the two outputs
+    of the BTW analysis. This is a tab-delimited text file whose columns are
+    organized in the following order:
+        column 1: Count of the number of times a particular pattern of
+                  observed states occur in the concatenated alignment.
+               2: Column (site) number where a particular pattern of observed
+                  states was first seen in the concatenated alignment.
+               3: Number of alleles in state A (of two states)
+               4: Number of alleles in state B (alternative state)
+               5: Observed states. Identity of each character is given by the 
+                  ordered list of labels in the 'labels' parameter.
+               6: blank
+    
+    From column 7, the columns follow a repeating pattern for every three
+    columns. The pattern is:
+        column A: Ancestral state of the last common ancestor
+                  between two species. Expected value is a single character.
+                  For example, inferring using Dmel population and Dsim,
+                  this column indicates the inferred state for the
+                  Dmel-Dsim common ancestor.
+               B: Ancestral state of the population. Expected value is a single
+                  character.
+               C: Join probability of inferring this particular ancestral state
+                  between species and for the population. Expected value is a
+                  floating point number. Note that values may be written in
+                  scientific notation (for example: 1.0e-10).
+    The sum of all the C-type columns in a row must sum to 1.0.
+
+    This table of counts can be derived from the per-site output of the BTW
+    analysis.
+
+    """
+    pattern_d = defaultdict(list)
+    prob_d = defaultdict(list)
+    with open(path, 'r') as f:
+        for line in f.readlines():
+            line = line.rstrip()
+            if line.startswith('#'):
+                continue
+            # Python doesnt support capturing individual nested matches
+            raw_line_pattern = r'(?P<pattern_count>\d+)\t(\d+)\t' \
+                               r'(?P<allele_count_a>\d+)\t' \
+                               r'(?P<allele_count_b>\d+)\t' \
+                               r'(?P<pattern>[ATCG]{6})\:\t\t' \
+                               r'(?P<state_probs_txt>(([ATCG])\t' \
+                               r'([ATCG])\t(\d\.*\d*(e[+-]\d+)*)\t*)+)'
+            line_pattern = re.compile(raw_line_pattern)
+            match_d = line_pattern.search(line).groupdict()
+            for k, v in match_d.items():
+                if k == 'pattern':
+                    pattern_d['pattern'].append(v)
+                    for obs_state, label in zip(v, labels):
+                        pattern_d['{}_obs'.format(label)].append(obs_state)
+                elif k in ['pattern_count', 'allele_count_a', 'allele_count_b']:
+                    pattern_d[k].append(int(v))
+                elif k == 'state_probs_txt':
+                    state_probs_pattern = r'([ATCG])\t([ATCG])\t' \
+                                          r'(\d\.*\d*e*[+-]*\d*)\t*'
+                    state_probs = re.findall(state_probs_pattern, v)
+                    for sp_state, pop_state, prob in state_probs:
+                        prob_d['allele_count_a'].append(
+                            int(match_d['allele_count_a']))
+                        prob_d['allele_count_b'].append(
+                            int(match_d['allele_count_b']))
+                        prob_d['pattern'].append(match_d['pattern'])
+                        prob_d['anc_species_state'].append(sp_state)
+                        prob_d['anc_pop_state'].append(pop_state)
+                        prob_d['anc_species_pop'].append(anc_states_keyword)
+                        prob_d['joint_prob'].append(float(prob))
+    return pattern_d, prob_d
+
+
+def read_btw_counts_file_to_dataframe(path,
+                                      anc_states_keyword='ms_m*',
+                                      # summarize=True,
+                                      join=True):
+    """Reads the ancestral configuration counts file from the BTW analysis
+    into a normalized pandas DataFrame.
+
+    Optionally if join is False, outputs one DataFrame for counts and another
+    DataFrame from probabilities.
+
+    Parameters
+    ----------
+    path : str
+    anc_states_keyword : str
+        Refers to the labels of ancestral states whose joint probability is
+        indicated in the BTW analysis file. Default is 'ms_m*' indicating the
+        joint state probabilities are for the Dmel-Dsim ancestor and the
+        Dmel population ancestor.
+    join : bool
+        Whether to output a joined table or output counts and probabilities
+        separately. Default is True.
+
+    Returns
+    -------
+    pandas.DataFrame
+
+    """
+    counts_d, prob_d = read_btw_counts_file_to_dict(path, anc_states_keyword)
+    counts_df = pd.DataFrame(counts_d)
+    prob_df = pd.DataFrame(prob_d)
+    # TODO: order dataframe columns
+    # Always combine similar state1 and state2 chars
+    summarize = True
+    if summarize:
+        prob_df = summarize_ancestral_prob_df(prob_df)
+    if join:
+        anc_config_df = counts_df.join(prob_df, 
+                                       on=['pattern',
+                                           'allele_count_a',
+                                           'allele_count_b']) \
+                                 .set_index(['pattern',
+                                             'allele_count_a',
+                                             'allele_count_b',
+                                             'anc_species_state',
+                                             'anc_pop_state'])
+        return anc_config_df
+    return counts_df, prob_df
+
+
+def read_btw_sites_file_to_dict(path, anc_states_keyword='ms_m*'):
+    """Reads the ancestral configuration sites file from the BTW analysis
+    into two dictionaries for the site positions and the probabilities,
+    respectively.
+
+    Parameters
+    ----------
+    path : str
+    anc_states_keyword : str
+        Refers to the labels of ancestral states whose joint probability is
+        indicated in the BTW analysis file. Default is 'ms_m*' indicating the
+        joint state probabilities are for the Dmel-Dsim ancestor and the
+        Dmel population ancestor.
+    labels : list of str
+        Labels to used to indicate the identity of each character in the
+        observed state configuration pattern.
+
+    Returns
+    -------
+    tuple of dict
+        Returns a dictionary of lists for the counts a pattern is observed,
+        and a dictionary of lists for the probabilities of each ancestral
+        state pair, for each pattern observed.
+
+    Notes
+    -----
+    The ancestral configuration sites file is the first of the two outputs
+    of the BTW analysis. This is a tab-delimited text file whose columns are
+    organized in the following order:
+        column 1: Column (site) number in the concatenated sequence alignment
+               2: Number of alleles in state A (of two states)
+               3: Number of alleles in state B (alternative state)
+               4: Observed states. Identity of each character is given by the
+                  ordered list of labels in the 'labels' parameter.
+               5: blank
+
+    From column 6, the columns follow a repeating pattern for every three
+    columns. The pattern is:
+        column A: Ancestral state of the last common ancestor
+                  between two species. Expected value is a single character.
+                  For example, inferring using Dmel population and Dsim,
+                  this column indicates the inferred state for the
+                  Dmel-Dsim common ancestor.
+               B: Ancestral state of the population. Expected value is a single
+                  character.
+               C: Join probability of inferring this particular ancestral state
+                  between species and for the population. Expected value is a
+                  floating point number. Note that values may be written in
+                  scientific notation (for example: 1.0e-10).
+    The sum of all the C-type columns in a row must sum to 1.0.
+
+    """
+    site_d = defaultdict(list)
+    prob_d = defaultdict(list)
+    pattern_labels = ['y', 'e', 'm1', 'm2', 's1', 's2']
+    with open(path, 'r') as f:
+        for line in f.readlines():
+            line = line.rstrip()
+            if line.startswith('#'):
+                continue
+            # Python doesnt support capturing individual nested matches
+            raw_line_pattern = r'^(?P<col_num>\d+)\t' \
+                               r'(?P<allele_count_a>\d+)\t' \
+                               r'(?P<allele_count_b>\d+)\t' \
+                               r'(?P<pattern>[ATCG]{6})\:\t\t' \
+                               r'(?P<state_probs_txt>(([ATCG])\t' \
+                               r'([ATCG])\t(\d\.*\d*(e[+-]\d+)*)\t*)+)'
+            line_pattern = re.compile(raw_line_pattern)
+            match_d = line_pattern.search(line).groupdict()
+            # TODO: also used in read_ancestral_config_counts...
+            # Create a function to stop repeatedly declaring
+            for k, v in match_d.items():
+                if k == 'pattern':
+                    site_d['pattern'].append(v)
+                    for obs_state, label in zip(v, pattern_labels):
+                        site_d['{}_obs'.format(label)].append(obs_state)
+                elif k in ['pattern_count', 'allele_count_a', 'allele_count_b']:
+                    site_d[k].append(int(v))
+                elif k == 'state_probs_txt':
+                    state_probs_pattern = r'([ATCG])\t([ATCG])\t' \
+                                          r'(\d\.*\d*e*[+-]*\d*)\t*'
+                    state_probs = re.findall(state_probs_pattern, v)
+                    for sp_state, pop_state, prob in state_probs:
+                        prob_d['allele_count_a'].append(
+                            int(match_d['allele_count_a']))
+                        prob_d['allele_count_b'].append(
+                            int(match_d['allele_count_b']))
+                        prob_d['pattern'].append(match_d['pattern'])
+                        prob_d['anc_species_state'].append(sp_state)
+                        prob_d['anc_pop_state'].append(pop_state)
+                        prob_d['anc_species_pop'].append(anc_states_keyword)
+                        prob_d['joint_prob'].append(float(prob))
+    return site_d, prob_d
+
+
+def read_btw_sites_file_to_dataframe(path,
+                                     anc_states_keyword='ms_m*',
+                                     # summarize=True,
+                                     join=True):
+    """Reads the ancestral configuration sites file from the BTW analysis
+    into a normalized pandas DataFrame.
+
+    Optionally if join is False, outputs one DataFrame for site positions
+    and another DataFrame from probabilities.
+
+    Parameters
+    ----------
+    path : str
+    anc_states_keyword : str
+        Refers to the labels of ancestral states whose joint probability is
+        indicated in the BTW analysis file. Default is 'ms_m*' indicating the
+        joint state probabilities are for the Dmel-Dsim ancestor and the
+        Dmel population ancestor.
+    join : bool
+        Whether to output a joined table or output counts and probabilities
+        separately. Default is True.
+
+    Returns
+    -------
+    pandas.DataFrame
+
+    """
+    site_d, prob_d = read_btw_sites_file_to_dict(path, anc_states_keyword)
+    site_df = pd.DataFrame(site_d).set_index('col_num')
+    prob_df = pd.DataFrame(prob_d)
+    # Always combine similar state1 and state2 chars
+    summarize = True
+    if summarize:
+        prob_df = summarize_ancestral_prob_df(prob_df)
+    if join:
+        site_prob_df = site_df.reset_index() \
+                              .join(prob_df, on=['pattern',
+                                                 'allele_count_a',
+                                                 'allele_count_b']) \
+                              .set_index(['col_num',
+                                          'pattern',
+                                          'allele_count_a',
+                                          'allele_count_b',
+                                          'anc_species_state',
+                                          'anc_pop_state'])
+        return site_prob_df
+    return site_df
