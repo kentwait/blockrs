@@ -5,7 +5,7 @@ import os
 import pickle
 import sqlite3 as sq
 
-def write_dict_to_fasta_file(d, path, line_width=None, description_parser=None,
+def dict_to_fasta_file(d, path, line_width=None, description_parser=None,
                              use_key=True):
     """Writes a dictionary of dictionaries into a FASTA-formatted text file.
 
@@ -70,7 +70,7 @@ def write_dict_to_fasta_file(d, path, line_width=None, description_parser=None,
     return cnt
 
 
-def write_dict_to_fasta_dir(d, dirpath, suffix='.aln',
+def dict_to_fasta_dir(d, dirpath, suffix='.aln',
                             filename_parser=None, description_parser=None,
                             line_width=None, verbose=False):
     """Writes dictionary of sequence dictionaries into FASTA files to be
@@ -160,7 +160,7 @@ def pickle_fasta_dir_dict(description, fasta_d, path, usage=None, **kwargs):
         pickle.dump(packaged_d, f)
 
 
-def write_df_to_sqlite(df, db_path, table_name, create_table_sql, 
+def df_to_sqlite(df, db_path, table_name, create_table_sql, 
                        drop_is_exists=False):
     if drop_is_exists:
         with sq.connect(db_path) as conn:
@@ -177,7 +177,7 @@ def write_df_to_sqlite(df, db_path, table_name, create_table_sql,
         return conn.execute(count_sql).fetchone()[0]
 
 
-def write_exon_df_to_sqlite(df, db_path, drop_is_exists=False,
+def exon_df_to_sqlite(df, db_path, drop_is_exists=False,
                             table_name='Exons'):
     exon_table_sql = """
         CREATE TABLE "Exons" (
@@ -198,7 +198,7 @@ def write_exon_df_to_sqlite(df, db_path, drop_is_exists=False,
                               drop_is_exists=drop_is_exists)
 
 
-def write_intron_df_to_sqlite(df, db_path, drop_is_exists=False,
+def intron_df_to_sqlite(df, db_path, drop_is_exists=False,
                                   table_name='Introns'):
     exon_table_sql = """
         CREATE TABLE "Introns" (
@@ -219,7 +219,7 @@ def write_intron_df_to_sqlite(df, db_path, drop_is_exists=False,
                               drop_is_exists=drop_is_exists)
 
 
-def write_transcript_df_to_sqlite(df, db_path, drop_is_exists=False,
+def transcript_df_to_sqlite(df, db_path, drop_is_exists=False,
                                   table_name='Metadata'):
     exon_table_sql = """
         CREATE TABLE "Metadata" (
