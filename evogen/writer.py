@@ -111,7 +111,7 @@ def dict_to_fasta_dir(d, dirpath, suffix='.aln',
             fname = filename_parser(k)
 
         path = os.path.join(dirpath, fname)
-        c = write_dict_to_fasta_file(seq_d, path, line_width=line_width,
+        c = dict_to_fasta_file(seq_d, path, line_width=line_width,
                                      description_parser=description_parser)
 
         if verbose:
@@ -160,7 +160,7 @@ def pickle_fasta_dir_dict(description, fasta_d, path, usage=None, **kwargs):
         pickle.dump(packaged_d, f)
 
 
-def df_to_sqlite(df, db_path, table_name, create_table_sql, 
+def dataframe_to_sqlite(df, db_path, table_name, create_table_sql, 
                        drop_is_exists=False):
     if drop_is_exists:
         with sq.connect(db_path) as conn:
@@ -194,7 +194,7 @@ def exon_df_to_sqlite(df, db_path, drop_is_exists=False,
             "from_cds_stop" INTEGER,
             "sequence" TEXT NOT NULL );
         """
-    return write_df_to_sqlite(df, db_path, table_name, exon_table_sql,
+    return dataframe_to_sqlite(df, db_path, table_name, exon_table_sql,
                               drop_is_exists=drop_is_exists)
 
 
@@ -215,7 +215,7 @@ def intron_df_to_sqlite(df, db_path, drop_is_exists=False,
             "from_cds_stop" INTEGER,
             "sequence" TEXT NOT NULL );
         """
-    return write_df_to_sqlite(df, db_path, table_name, exon_table_sql,
+    return dataframe_to_sqlite(df, db_path, table_name, exon_table_sql,
                               drop_is_exists=drop_is_exists)
 
 
@@ -234,5 +234,5 @@ def transcript_df_to_sqlite(df, db_path, drop_is_exists=False,
             "exon_count" INTEGER,
             "intron_count" INTEGER );
         """
-    return write_df_to_sqlite(df, db_path, table_name, exon_table_sql,
+    return dataframe_to_sqlite(df, db_path, table_name, exon_table_sql,
                               drop_is_exists=drop_is_exists)
