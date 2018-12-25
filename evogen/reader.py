@@ -128,7 +128,7 @@ def fasta_dir_to_dict(dirpath, suffix='.aln',
         key = filename_parser(fname) if filename_parser else fname
         if key in sequence_d.keys():
             raise KeyError('{} already exists'.format(key))
-        sequence_d[key] = read_fasta_file_to_dict(os.path.join(dirpath, fname),
+        sequence_d[key] = fasta_file_to_dict(os.path.join(dirpath, fname),
                                                   description_parser=description_parser)
 
         cnt += 1
@@ -515,7 +515,7 @@ def genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
 
     """
     tr_meta_d, cds_d, intron_d = \
-        read_genpos_file_to_dicts(path, convert_to_zero_based_index)
+        genpos_file_to_dicts(path, convert_to_zero_based_index)
 
     # create transcript metadata df
     # transcript metadata
@@ -835,7 +835,7 @@ def btw_counts_file_to_dataframe(path,
     pandas.DataFrame
 
     """
-    counts_d, prob_d = read_btw_counts_file_to_dict(path, anc_states_keyword)
+    counts_d, prob_d = btw_counts_file_to_dict(path, anc_states_keyword)
     counts_df = pd.DataFrame(counts_d)
     prob_df = pd.DataFrame(prob_d)
     # TODO: order dataframe columns
@@ -979,7 +979,7 @@ def btw_sites_file_to_dataframe(path,
     pandas.DataFrame
 
     """
-    site_d, prob_d = read_btw_sites_file_to_dict(path, anc_states_keyword)
+    site_d, prob_d = btw_sites_file_to_dict(path, anc_states_keyword)
     site_df = pd.DataFrame(site_d).set_index('col_num')
     prob_df = pd.DataFrame(prob_d)
     # Always combine similar state1 and state2 chars
