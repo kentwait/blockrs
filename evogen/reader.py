@@ -12,7 +12,7 @@ import numpy as np
 from evogen.block import combine_exon_blocks
 from evogen.utils import summarize_ancestral_prob_df
 
-def read_fasta_file_to_dict(path, description_parser=None):
+def fasta_file_to_dict(path, description_parser=None):
     """Reads a FASTA formatted text file into an ordered dictionary.
 
     Each entry is represented as a dictionary composed of
@@ -77,7 +77,7 @@ def read_fasta_file_to_dict(path, description_parser=None):
     return seq_d
 
 
-def read_fasta_dir_to_dict(dirpath, suffix='.aln',
+def fasta_dir_to_dict(dirpath, suffix='.aln',
                            expected_count=None, filename_parser=None,
                            description_parser=None):
     """Reads a directory of FASTA files and stores data as
@@ -142,7 +142,7 @@ def read_fasta_dir_to_dict(dirpath, suffix='.aln',
     return sequence_d
 
 
-def read_blast_table(path, sep='\t',
+def blast_table(path, sep='\t',
                      col_labels=['qaccver', 'saccver', 'pident', 'length',
                                  'mismatch', 'gapopen', 'qstart', 'qend',
                                  'sstart', 'send', 'evalue', 'bitscore', 'qlen',
@@ -165,7 +165,7 @@ def read_blast_table(path, sep='\t',
     return df
 
 
-def read_geneinfo_seq_file_to_dict(path, id_parser=lambda x: x.split('$')[-1]):
+def geneinfo_seq_file_to_dict(path, id_parser=lambda x: x.split('$')[-1]):
     """Reads a geneinfo sequence file into an ordered dictionary of sequences.
 
     Parameters
@@ -254,7 +254,7 @@ def read_geneinfo_seq_file_to_dict(path, id_parser=lambda x: x.split('$')[-1]):
     return sequence_d
 
 
-def read_genpos_file_to_dicts(path, convert_to_zero_based_index=True):
+def genpos_file_to_dicts(path, convert_to_zero_based_index=True):
     """Reads a genpos file and stores its contents in three separate
     ordered dictionaries (transcript metadata, exons, introns).
 
@@ -496,7 +496,8 @@ def read_genpos_file_to_dicts(path, convert_to_zero_based_index=True):
 
     return tr_meta_d, cds_d, intron_d
 
-def read_genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
+
+def genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
     """Reads a genpos file and stores its contents into three separate pandas
     DataFrames (transcript metadata, exons, introns).
 
@@ -629,7 +630,7 @@ def read_genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
     return tr_df, exon_df, intron_df
 
 
-def read_sqlite_transcript_to_df(db_path, table_name='Metadata'):
+def sqlite_transcript_to_df(db_path, table_name='Metadata'):
     """Retrieves the transcript metadata table from an SQLite database
     as a pandas DataFrame.
 
@@ -653,7 +654,7 @@ def read_sqlite_transcript_to_df(db_path, table_name='Metadata'):
         return df
 
 
-def read_sqlite_exon_to_df(db_path, table_name='Exons'):
+def sqlite_exon_to_df(db_path, table_name='Exons'):
     """Retrieves the exon table from an SQLite database
     as a pandas DataFrame.
 
@@ -681,7 +682,7 @@ def read_sqlite_exon_to_df(db_path, table_name='Exons'):
         return df
 
 
-def read_sqlite_intron_to_df(db_path, table_name='Introns'):
+def sqlite_intron_to_df(db_path, table_name='Introns'):
     """Retrieves the intron table from an SQLite database
     as a pandas DataFrame.
 
@@ -708,7 +709,7 @@ def read_sqlite_intron_to_df(db_path, table_name='Introns'):
         return df
 
 
-def read_btw_counts_file_to_dict(path,
+def btw_counts_file_to_dict(path,
                                  anc_states_keyword='ms_m*',
                                  labels=['y', 'e', 'm1', 'm2', 's1', 's2']):
     """Reads the ancestral configuration counts file from the BTW analysis
@@ -807,7 +808,7 @@ def read_btw_counts_file_to_dict(path,
     return pattern_d, prob_d
 
 
-def read_btw_counts_file_to_dataframe(path,
+def btw_counts_file_to_dataframe(path,
                                       anc_states_keyword='ms_m*',
                                       # summarize=True,
                                       join=True):
@@ -856,7 +857,7 @@ def read_btw_counts_file_to_dataframe(path,
     return counts_df, prob_df
 
 
-def read_btw_sites_file_to_dict(path, anc_states_keyword='ms_m*'):
+def btw_sites_file_to_dict(path, anc_states_keyword='ms_m*'):
     """Reads the ancestral configuration sites file from the BTW analysis
     into two dictionaries for the site positions and the probabilities,
     respectively.
@@ -951,7 +952,7 @@ def read_btw_sites_file_to_dict(path, anc_states_keyword='ms_m*'):
     return site_d, prob_d
 
 
-def read_btw_sites_file_to_dataframe(path,
+def btw_sites_file_to_dataframe(path,
                                      anc_states_keyword='ms_m*',
                                      # summarize=True,
                                      join=True):
