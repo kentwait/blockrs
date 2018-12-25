@@ -12,6 +12,7 @@ import numpy as np
 from evogen.block import combine_exon_blocks
 from evogen.utils import summarize_ancestral_prob_df
 
+
 def fasta_file_to_dict(path, description_parser=None):
     """Reads a FASTA formatted text file into an ordered dictionary.
 
@@ -41,7 +42,7 @@ def fasta_file_to_dict(path, description_parser=None):
     description = ''
     seq = []
     seq_d = OrderedDict()
-    with open(path, 'r') as f:
+    with open(path, 'r') as f:  # pylint: disable=invalid-name
         for line in f.readlines():
             line = line.rstrip()
             if line.startswith('>'):
@@ -78,8 +79,8 @@ def fasta_file_to_dict(path, description_parser=None):
 
 
 def fasta_dir_to_dict(dirpath, suffix='.aln',
-                           expected_count=None, filename_parser=None,
-                           description_parser=None):
+                      expected_count=None, filename_parser=None,
+                      description_parser=None):
     """Reads a directory of FASTA files and stores data as
     nested dictionaries.
 
@@ -129,7 +130,7 @@ def fasta_dir_to_dict(dirpath, suffix='.aln',
         if key in sequence_d.keys():
             raise KeyError('{} already exists'.format(key))
         sequence_d[key] = fasta_file_to_dict(os.path.join(dirpath, fname),
-                                                  description_parser=description_parser)
+                                             description_parser)
 
         cnt += 1
 
@@ -143,10 +144,10 @@ def fasta_dir_to_dict(dirpath, suffix='.aln',
 
 
 def blast_table(path, sep='\t',
-                     col_labels=['qaccver', 'saccver', 'pident', 'length',
-                                 'mismatch', 'gapopen', 'qstart', 'qend',
-                                 'sstart', 'send', 'evalue', 'bitscore', 'qlen',
-                                 'slen', 'qcovs', 'sstrand']):
+                col_labels=['qaccver', 'saccver', 'pident', 'length',
+                            'mismatch', 'gapopen', 'qstart', 'qend',
+                            'sstart', 'send', 'evalue', 'bitscore', 'qlen',
+                            'slen', 'qcovs', 'sstrand']):
     """Reads BLAST results as a pandas DataFrame.
 
     Parameters
@@ -189,16 +190,16 @@ def geneinfo_seq_file_to_dict(path, id_parser=lambda x: x.split('$')[-1]):
     total_cnt = None
     cnt = 0
     sequence_d = OrderedDict()
-    with open(path, 'r') as f:
+    with open(path, 'r') as f:  # pylint: disable=invalid-name
         for i, line in enumerate(f.readlines()):
             line = line.rstrip()
             # Get item count
             if i == 0:
                 try:
                     total_cnt = int(line)
-                except ValueError as e:
+                except ValueError as err:
                     print('Expected item count, '
-                          'instead encountered error {}'.format(e))
+                          'instead encountered error {}'.format(err))
 
             if line.startswith('>'):
                 if seq:
@@ -267,7 +268,8 @@ def genpos_file_to_dicts(path, convert_to_zero_based_index=True):
     Returns
     -------
     tuple of OrderedDict
-        Returns three ordered dictionaries in the following order: transcriptmetadata dictionary, cds dictionary, and intron dictionary.
+        Returns three ordered dictionaries in the following order:
+        transcriptmetadata dictionary, cds dictionary, and intron dictionary.
 
     """
     # Flags
@@ -291,7 +293,7 @@ def genpos_file_to_dicts(path, convert_to_zero_based_index=True):
     tr_meta_d = OrderedDict()
     cds_d = OrderedDict()
     intron_d = OrderedDict()
-    with open(path, 'r') as f:
+    with open(path, 'r') as f:  # pylint: disable=invalid-name
         for line in f.readlines():
             line = line.rstrip()
             # Skip comment lines
@@ -304,8 +306,8 @@ def genpos_file_to_dicts(path, convert_to_zero_based_index=True):
                     tr_meta = {
                         'geneinfo_id': geneinfo_id
                     }
-                except ValueError as e:
-                    raise e
+                except ValueError as err:
+                    raise err
                 geneinfo_finished = True
             # Chromosome metadata
             elif geneinfo_finished:
@@ -463,8 +465,8 @@ def genpos_file_to_dicts(path, convert_to_zero_based_index=True):
                             'from_tss_start': match[4],
                             'from_tss_stop': match[5],
                         }
-                    except Exception as e:
-                        print(e, line, sep='\n')
+                    except Exception as err:  # pylint: disable=W0703
+                        print(err, line, sep='\n')
                     intron_coords_finished = True
                 else:
                     int_data['sequence'] = line
@@ -477,14 +479,14 @@ def genpos_file_to_dicts(path, convert_to_zero_based_index=True):
                     int_data = {}
                     intron_coords_finished = False
     if convert_to_zero_based_index:
-        for gid, d in tr_meta_d.items():
+        for gid, d in tr_meta_d.items():  # pylint: disable=invalid-name
             if tr_meta_d[gid]['genome_start'] < tr_meta_d[gid]['genome_stop']:
                 tr_meta_d[gid]['genome_start'] -= 1
             else:
                 tr_meta_d[gid]['genome_stop'] -= 1
             tr_meta_d[gid]['exon_blocks'] = [slice(s.start - 1, s.stop)
                                              for s in d['exon_blocks']]
-        for gid, d in cds_d.items():
+        for gid, d in cds_d.items():  # pylint: disable=invalid-name
             if tr_meta_d[gid]['genome_start'] < tr_meta_d[gid]['genome_stop']:
                 cds_d[gid]['genome_start'] -= 1
             else:
@@ -535,13 +537,13 @@ def genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
     # exon blocks df
     # can reconstruct cds_df from this dataframe
     tr_exon_blocks_list = []
-    for k, d in cds_d.items():
+    for k, d in cds_d.items():  # pylint: disable=invalid-name
         all_exon_blocks, exon_ids = \
             combine_exon_blocks(tr_meta_d[k]['exon_blocks'], d['exon_blocks'])
         assert len(all_exon_blocks) == len(exon_ids)
         from_cds_start = 0
         cds_cnt = 1  # 1-based index
-        for i, s in enumerate(all_exon_blocks):
+        for i, s in enumerate(all_exon_blocks):  # pylint: disable=invalid-name
             baselen = s.stop - s.start
             if tr_meta_d[k]['forward']:
                 gstart = tr_meta_d[k]['genome_start'] + s.start
@@ -593,7 +595,7 @@ def genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
                        'sequence']]
 
     # intron blocks df
-    for k, d in intron_d.items():
+    for k, d in intron_d.items():  # pylint: disable=invalid-name
         gid, _ = k
         if tr_meta_d[gid]['forward']:
             gstart = tr_meta_d[gid]['genome_start'] + d['from_tss_start']
@@ -701,8 +703,8 @@ def sqlite_intron_to_df(db_path, table_name='Introns'):
         df = pd.read_sql(select_sql, conn,
                          index_col=['geneinfo_id', 'int_id'])
         df = df[['transcribed', 'baselen',
-                 'genome_start', 'genome_stop', 
-                 'from_tss_start', 'from_tss_stop', 
+                 'genome_start', 'genome_stop',
+                 'from_tss_start', 'from_tss_stop',
                  'from_cds_start', 'from_cds_stop',
                  'sequence']]
         df['transcribed'] = df['transcribed'].astype(bool)
@@ -710,8 +712,8 @@ def sqlite_intron_to_df(db_path, table_name='Introns'):
 
 
 def btw_counts_file_to_dict(path,
-                                 anc_states_keyword='ms_m*',
-                                 labels=['y', 'e', 'm1', 'm2', 's1', 's2']):
+                            anc_states_keyword='ms_m*',
+                            labels=['y', 'e', 'm1', 'm2', 's1', 's2']):
     """Reads the ancestral configuration counts file from the BTW analysis
     into two dictionaries for the counts and the probabilities, respectively.
 
@@ -726,7 +728,7 @@ def btw_counts_file_to_dict(path,
     labels : list of str
         Labels to used to indicate the identity of each character in the
         observed state configuration pattern.
-    
+
     Returns
     -------
     tuple of dict
@@ -745,10 +747,10 @@ def btw_counts_file_to_dict(path,
                   states was first seen in the concatenated alignment.
                3: Number of alleles in state A (of two states)
                4: Number of alleles in state B (alternative state)
-               5: Observed states. Identity of each character is given by the 
+               5: Observed states. Identity of each character is given by the
                   ordered list of labels in the 'labels' parameter.
                6: blank
-    
+
     From column 7, the columns follow a repeating pattern for every three
     columns. The pattern is:
         column A: Ancestral state of the last common ancestor
@@ -770,7 +772,7 @@ def btw_counts_file_to_dict(path,
     """
     pattern_d = defaultdict(list)
     prob_d = defaultdict(list)
-    with open(path, 'r') as f:
+    with open(path, 'r') as f:  # pylint: disable=invalid-name
         for line in f.readlines():
             line = line.rstrip()
             if line.startswith('#'):
@@ -784,7 +786,7 @@ def btw_counts_file_to_dict(path,
                                r'([ATCG])\t(\d\.*\d*(e[+-]\d+)*)\t*)+)'
             line_pattern = re.compile(raw_line_pattern)
             match_d = line_pattern.search(line).groupdict()
-            for k, v in match_d.items():
+            for k, v in match_d.items():  # pylint: disable=invalid-name
                 if k == 'pattern':
                     pattern_d['pattern'].append(v)
                     for obs_state, label in zip(v, labels):
@@ -809,9 +811,9 @@ def btw_counts_file_to_dict(path,
 
 
 def btw_counts_file_to_dataframe(path,
-                                      anc_states_keyword='ms_m*',
-                                      # summarize=True,
-                                      join=True):
+                                 anc_states_keyword='ms_m*',
+                                 # summarize=True,
+                                 join=True):
     """Reads the ancestral configuration counts file from the BTW analysis
     into a normalized pandas DataFrame.
 
@@ -844,7 +846,7 @@ def btw_counts_file_to_dataframe(path,
     if summarize:
         prob_df = summarize_ancestral_prob_df(prob_df)
     if join:
-        anc_config_df = counts_df.join(prob_df, 
+        anc_config_df = counts_df.join(prob_df,
                                        on=['pattern',
                                            'allele_count_a',
                                            'allele_count_b']) \
@@ -857,7 +859,8 @@ def btw_counts_file_to_dataframe(path,
     return counts_df, prob_df
 
 
-def btw_sites_file_to_dict(path, anc_states_keyword='ms_m*'):
+def btw_sites_file_to_dict(path, anc_states_keyword='ms_m*',
+                           labels=['y', 'e', 'm1', 'm2', 's1', 's2']):
     """Reads the ancestral configuration sites file from the BTW analysis
     into two dictionaries for the site positions and the probabilities,
     respectively.
@@ -911,8 +914,7 @@ def btw_sites_file_to_dict(path, anc_states_keyword='ms_m*'):
     """
     site_d = defaultdict(list)
     prob_d = defaultdict(list)
-    pattern_labels = ['y', 'e', 'm1', 'm2', 's1', 's2']
-    with open(path, 'r') as f:
+    with open(path, 'r') as f:  # pylint: disable=invalid-name
         for line in f.readlines():
             line = line.rstrip()
             if line.startswith('#'):
@@ -928,10 +930,10 @@ def btw_sites_file_to_dict(path, anc_states_keyword='ms_m*'):
             match_d = line_pattern.search(line).groupdict()
             # TODO: also used in read_ancestral_config_counts...
             # Create a function to stop repeatedly declaring
-            for k, v in match_d.items():
+            for k, v in match_d.items():  # pylint: disable=invalid-name
                 if k == 'pattern':
                     site_d['pattern'].append(v)
-                    for obs_state, label in zip(v, pattern_labels):
+                    for obs_state, label in zip(v, labels):
                         site_d['{}_obs'.format(label)].append(obs_state)
                 elif k in ['pattern_count', 'allele_count_a', 'allele_count_b']:
                     site_d[k].append(int(v))
@@ -953,9 +955,9 @@ def btw_sites_file_to_dict(path, anc_states_keyword='ms_m*'):
 
 
 def btw_sites_file_to_dataframe(path,
-                                     anc_states_keyword='ms_m*',
-                                     # summarize=True,
-                                     join=True):
+                                anc_states_keyword='ms_m*',
+                                # summarize=True,
+                                join=True):
     """Reads the ancestral configuration sites file from the BTW analysis
     into a normalized pandas DataFrame.
 
