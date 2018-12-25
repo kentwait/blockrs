@@ -77,3 +77,27 @@ def encode_shortform_block_annotation(d):
         # If any one of the keys is not found, returns an empty string
         # Because "marker" will not have any extra keys in its per sequence dict
         return ''
+
+
+def summarize_ancestral_prob_df(df):
+    """Combines multiple entries that have identical ancestral species MRCA
+    and population MRCA states into one using pandas groupby.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+
+    Returns
+    -------
+    pandas.DataFrame
+
+    """
+    df = df.groupby(['pattern', 'allele_count_a', 'allele_count_b',
+                     'anc_species_state', 'anc_pop_state',
+                     'anc_species_pop']) \
+           .apply(lambda x: x['joint_prob'].sum()) \
+           .reset_index() \
+           .set_index(['pattern', 'allele_count_a', 'allele_count_b'])
+    df.columns = ['anc_species_state', 'anc_pop_state',
+                  'anc_species_pop', 'prob']
+    return df
