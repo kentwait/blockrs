@@ -173,7 +173,7 @@ def read_geneinfo_seq_file_to_dict(path, id_parser=lambda x: x.split('$')[-1]):
     id_parser : function
         Function that takes in the entire ID line and outputs the
         desired gene name/ID.
-    
+
     Returns
     -------
     OrderedDict
@@ -254,6 +254,21 @@ def read_geneinfo_seq_file_to_dict(path, id_parser=lambda x: x.split('$')[-1]):
 
 
 def read_genpos_file_to_dicts(path, convert_to_zero_based_index=True):
+    """Reads a genpos file and stores its contents in three separate
+    ordered dictionaries (transcript metadata, exons, introns).
+
+    Parameters
+    ----------
+    path : str
+    convert_to_zero_based_index : bool, optional
+        Default is True
+
+    Returns
+    -------
+    tuple of OrderedDict
+        Returns three ordered dictionaries in the following order: transcriptmetadata dictionary, cds dictionary, and intron dictionary.
+
+    """
     # Flags
     geneinfo_finished = False
     transcript_metadata_flag = False
@@ -481,6 +496,22 @@ def read_genpos_file_to_dicts(path, convert_to_zero_based_index=True):
     return tr_meta_d, cds_d, intron_d
 
 def read_genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
+    """Reads a genpos file and stores its contents into three separate pandas
+    DataFrames (transcript metadata, exons, introns).
+
+    Parameters
+    ----------
+    path : str
+    convert_to_zero_based_index : bool, optional
+        Default is True
+
+    Returns
+    -------
+    tuple of pandas.DataFrame
+        Returns three DataFrames in the following order: transcript
+        metadata, cds, and intron DataFrames.
+
+    """
     tr_meta_d, cds_d, intron_d = \
         read_genpos_file_to_dicts(path, convert_to_zero_based_index)
 
@@ -598,6 +629,19 @@ def read_genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
 
 
 def read_sqlite_transcript_to_df(db_path, table_name='Metadata'):
+    """Retrieves the transcript metadata table from an SQLite database
+    as a pandas DataFrame.
+
+    Parameters
+    ----------
+    db_path : str
+    table_name : str, optional
+
+    Returns
+    -------
+    pandas.DataFrame
+
+    """
     select_sql = 'SELECT * FROM {};'.format(table_name)
     with sq.connect(db_path) as conn:
         df = pd.read_sql(select_sql, conn,
@@ -609,6 +653,19 @@ def read_sqlite_transcript_to_df(db_path, table_name='Metadata'):
 
 
 def read_sqlite_exon_to_df(db_path, table_name='Exons'):
+    """Retrieves the exon table from an SQLite database
+    as a pandas DataFrame.
+
+    Parameters
+    ----------
+    db_path : str
+    table_name : str, optional
+
+    Returns
+    -------
+    pandas.DataFrame
+    
+    """
     select_sql = 'SELECT * FROM {};'.format(table_name)
     with sq.connect(db_path) as conn:
         df = pd.read_sql(select_sql, conn)
@@ -624,9 +681,22 @@ def read_sqlite_exon_to_df(db_path, table_name='Exons'):
 
 
 def read_sqlite_intron_to_df(db_path, table_name='Introns'):
+    """Retrieves the intron table from an SQLite database
+    as a pandas DataFrame.
+
+    Parameters
+    ----------
+    db_path : str
+    table_name : str, optional
+
+    Returns
+    -------
+    pandas.DataFrame
+
+    """
     select_sql = 'SELECT * FROM {};'.format(table_name)
     with sq.connect(db_path) as conn:
-        df = pd.read_sql(select_sql, conn, 
+        df = pd.read_sql(select_sql, conn,
                          index_col=['geneinfo_id', 'int_id'])
         df = df[['transcribed', 'baselen',
                  'genome_start', 'genome_stop', 
