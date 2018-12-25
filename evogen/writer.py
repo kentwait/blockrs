@@ -5,8 +5,9 @@ import os
 import pickle
 import sqlite3 as sq
 
-def dict_to_fasta_file(d, path, line_width=None, description_parser=None,
-                             use_key=True):
+
+def dict_to_fasta_file(fasta_d, path, line_width=None, description_parser=None,
+                       use_key=True):
     """Writes a dictionary of dictionaries into a FASTA-formatted text file.
 
     This function expects a dictionary of dictionaries where the inner
@@ -15,7 +16,7 @@ def dict_to_fasta_file(d, path, line_width=None, description_parser=None,
 
     Parameters
     ----------
-    d : dict
+    fasta_d : dict
     path : str
     line_width : int
         Maximum number of characters per line of sequence.
@@ -36,49 +37,43 @@ def dict_to_fasta_file(d, path, line_width=None, description_parser=None,
     dirpath = os.path.dirname(path)
     if not os.path.exists(dirpath):
         raise Exception('{} does not exist'.format(dirpath))
-
-    with open(path, 'w') as f:
+    with open(path, 'w') as f:  # pylint: disable=invalid-name
         cnt = 0
-        for k, seq_d in d.items():
+        for k, seq_d in fasta_d.items():
             # Check if keys exist
             keys = seq_d.keys()
             for required_k in ['id', 'description', 'sequence']:
                 if required_k not in keys:
                     raise KeyError('{} key not found in <{}> sequence'.format(required_k, k))
-
             if description_parser:
                 seq_d['description'] = description_parser(seq_d)
-
             sid = seq_d['id']
             if use_key:
                 sid = str(k)
-
             if seq_d['description']:
                 print('>{} {}'.format(sid, seq_d['description']),
                       file=f)
             else:
                 print('>{}'.format(sid), file=f)
-
             if line_width:
-                s = [seq_d['sequence'][i:i+line_width]
-                     for i in range(0, len(seq_d['sequence']), line_width)]
-                print('\n'.join(s), file=f)
+                s_list = [seq_d['sequence'][i:i+line_width]
+                          for i in range(0, len(seq_d['sequence']), line_width)]
+                print('\n'.join(s_list), file=f)
             else:
                 print(seq_d['sequence'], file=f)
-
             cnt += 1
     return cnt
 
 
-def dict_to_fasta_dir(d, dirpath, suffix='.aln',
-                            filename_parser=None, description_parser=None,
-                            line_width=None, verbose=False):
+def dict_to_fasta_dir(fasta_dir_d, dirpath, suffix='.aln',
+                      filename_parser=None, description_parser=None,
+                      line_width=None, verbose=False):
     """Writes dictionary of sequence dictionaries into FASTA files to be
     saved into a specified directory.
 
     Parameters
     ----------
-    d : dict of dict
+    fasta_dir_d : dict of dict
     dirpath : str
     suffix : str
         Appended to the end of the key to create the filename.
@@ -103,22 +98,17 @@ def dict_to_fasta_dir(d, dirpath, suffix='.aln',
     # Check if dirpath exists
     if not os.path.exists(dirpath):
         os.makedirs(dirpath)
-
     cnt = 0
-    for k, seq_d in d.items():
+    for k, seq_d in fasta_dir_d.items():
         fname = str(k) + suffix
         if filename_parser:
             fname = filename_parser(k)
-
         path = os.path.join(dirpath, fname)
         c = dict_to_fasta_file(seq_d, path, line_width=line_width,
-                                     description_parser=description_parser)
-
+                               description_parser=description_parser)
         if verbose:
             print(path, c)
-
         cnt += 1
-
     return cnt
 
 
@@ -154,14 +144,13 @@ def pickle_fasta_dir_dict(description, fasta_d, path, usage=None, **kwargs):
     if usage:
         meta_list.append(('usage', usage))
     meta_list += list(kwargs.items())
-
     packaged_d = {'meta': dict(meta_list), 'data': fasta_d}
-    with open(path, 'wb') as f:
+    with open(path, 'wb') as f:  # pylint: disable=invalid-name
         pickle.dump(packaged_d, f)
 
 
-def dataframe_to_sqlite(df, db_path, table_name, create_table_sql, 
-                       drop_is_exists=False):
+def dataframe_to_sqlite(df, db_path, table_name, create_table_sql,
+                        drop_is_exists=False):
     if drop_is_exists:
         with sq.connect(db_path) as conn:
             c = conn.cursor()
@@ -178,7 +167,7 @@ def dataframe_to_sqlite(df, db_path, table_name, create_table_sql,
 
 
 def exon_df_to_sqlite(df, db_path, drop_is_exists=False,
-                            table_name='Exons'):
+                      table_name='Exons'):
     exon_table_sql = """
         CREATE TABLE "Exons" (
             "id" INTEGER PRIMARY KEY,
@@ -195,11 +184,11 @@ def exon_df_to_sqlite(df, db_path, drop_is_exists=False,
             "sequence" TEXT NOT NULL );
         """
     return dataframe_to_sqlite(df, db_path, table_name, exon_table_sql,
-                              drop_is_exists=drop_is_exists)
+                               drop_is_exists=drop_is_exists)
 
 
 def intron_df_to_sqlite(df, db_path, drop_is_exists=False,
-                                  table_name='Introns'):
+                        table_name='Introns'):
     exon_table_sql = """
         CREATE TABLE "Introns" (
             "id" INTEGER PRIMARY KEY,
@@ -216,11 +205,11 @@ def intron_df_to_sqlite(df, db_path, drop_is_exists=False,
             "sequence" TEXT NOT NULL );
         """
     return dataframe_to_sqlite(df, db_path, table_name, exon_table_sql,
-                              drop_is_exists=drop_is_exists)
+                               drop_is_exists=drop_is_exists)
 
 
 def transcript_df_to_sqlite(df, db_path, drop_is_exists=False,
-                                  table_name='Metadata'):
+                            table_name='Metadata'):
     exon_table_sql = """
         CREATE TABLE "Metadata" (
             "id" INTEGER PRIMARY KEY,
@@ -235,4 +224,4 @@ def transcript_df_to_sqlite(df, db_path, drop_is_exists=False,
             "intron_count" INTEGER );
         """
     return dataframe_to_sqlite(df, db_path, table_name, exon_table_sql,
-                              drop_is_exists=drop_is_exists)
+                               drop_is_exists=drop_is_exists)
