@@ -46,7 +46,30 @@ def range_to_blocks(range_list):
     return block_list
 
 
-def to_zero_index_slice(s):
+def blocks_to_pos_array(block_list):
+    """Converts a list of blocks (slices) into an explicit
+    listing of positions.
+
+    Parameters
+    ----------
+    block_list : list of slice
+
+    Returns
+    -------
+    numpy.array
+
+    """
+    pos_array = []
+    for block in block_list:
+        start, stop = block.start, block.stop
+        if start <= stop:
+            pos_array += list(range(start, stop))
+        else:
+            pos_array += list(range(start, stop, -1))
+    return np.array(pos_array, dtype=np.int32)
+
+
+def to_zero_index_slice(s):  # pylint: disable=invalid-name
     """Convert 1-based to 0-based position.
 
     Parameters
@@ -82,7 +105,7 @@ def to_zero_index_slice(s):
     return slice(s.start-1, s.stop, s.step)
 
 
-def to_one_index_slice(s):
+def to_one_index_slice(s):  # pylint: disable=invalid-name
     """Convert 0-based to 1-based position.
 
     Parameters
@@ -175,6 +198,7 @@ def remove_sites(seq, block_list, removed_pos_list, zero_indexed=True):
         new_block_list = list(map(to_one_index_slice, new_block_list))
 
     return ''.join(seq_array), new_block_list
+
 
 # Combine exon block lists to get UTR exon blocks
 def combine_exon_blocks(tr_exon_blocks, cds_exon_blocks):
