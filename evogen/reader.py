@@ -143,11 +143,11 @@ def fasta_dir_to_dict(dirpath, suffix='.aln',
     return sequence_d
 
 
-def blast_table(path, sep='\t',
-                col_labels=['qaccver', 'saccver', 'pident', 'length',
-                            'mismatch', 'gapopen', 'qstart', 'qend',
-                            'sstart', 'send', 'evalue', 'bitscore', 'qlen',
-                            'slen', 'qcovs', 'sstrand']):
+def blast_table_to_df(path, sep='\t',
+                      col_labels=['qaccver', 'saccver', 'pident', 'length',
+                                  'mismatch', 'gapopen', 'qstart', 'qend',
+                                  'sstart', 'send', 'evalue', 'bitscore',
+                                  'qlen', 'slen', 'qcovs', 'sstrand']):
     """Reads BLAST results as a pandas DataFrame.
 
     Parameters
