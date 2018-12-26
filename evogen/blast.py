@@ -4,7 +4,7 @@
 import pandas as pd
 import numpy as np
 import subprocess as proc
-from evogen.reader import read_blast_table
+from evogen.reader import blast_table_to_df
 
 
 MAKEBLASTDB_CMD_TEMPLATE = 'makeblastdb -in {ffn} -input_type fasta -dbtype ' \
@@ -92,7 +92,7 @@ def blastn_match(fasta_path, db_path, report_path,
         proc.run(cmd, check=True, shell=True)
     except proc.CalledProcessError as e:
         raise e
-    return read_blast_table(report_path)
+    return blast_table_to_df(report_path)
 
 
 def summarize_group(group):
