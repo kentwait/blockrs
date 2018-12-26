@@ -143,6 +143,317 @@ def to_one_index_slice(s):  # pylint: disable=invalid-name
     return slice(s.start+1, s.stop, s.step)
 
 
+def pairwise_to_blocks(ref_seq, other_seq, gapchar='-', debug=False):
+    """Creates a list of blocks as slices relativeto a reference sequence.
+
+    Parameters
+    ----------
+    ref_seq : str
+    other_seq : str
+    gapchar : str, optional
+
+    Returns
+    -------
+    list
+
+    Notes
+    -----
+    There are three possible scenarios when encoding the position of a sequence
+    relative to a reference.
+
+    Scenario 1:
+    The reference sequence in ungapped while the other sequence has
+    gaps.
+
+                012345678
+        ref   : ATGGAGCTG
+        other : ATG---CAG
+                012   678
+
+        output : [slice(0,3), slice(6,9)]
+
+    In this case, counting simply skips the positions where the
+    gaps occur and resumes when a non-gap character is encountered.
+
+    Since the output contains two slice blocks and the end
+    position of the first does not match the start position of the second,
+    this indicates that a gap exists in the sequence relative to the reference.
+    The size of the gap can be calculated by the difference between the start
+    of the latter slice and the end of the former.
+
+    Scenario 2:
+    The reference sequence and the other sequence contains gaps in the
+    same positions.
+
+                012   345
+        ref   : ATG---CTG
+        other : ATG---CAG
+                012   345
+
+        output : [slice(0,3), slice(3, 6)]
+
+    This is also a simple case to deal with as gaps can be ignored when
+    counting. This pairwise alignment is similar to the following when
+    the gaps are removed:
+
+                012345
+        ref   : ATGCTG
+        other : ATGCAG
+                012345
+
+        output : [slice(0, 6)]
+
+    While the treatment is the same, the output is different between the two.
+    To indicate that a gap existed, the slice block is split into two. Unlike
+    the first scenario, the end of the first block has the same value as the
+    start of the second block.
+
+    Scenario 3:
+    The reference sequence is gapped but the other sequence is not.
+
+                012   345
+        ref   : ATG---CTG
+        other : ATGGAGCAG
+                012???345
+
+        output : [slice(0,3), slice(-4, -1), slice(3,6)]
+
+    Since counting is relative to the reference, the positions where non-gap
+    characters exist in the other sequence have an "undefined" position.
+    To solve this problem, a GapBlock is used to indicate "nothingness".
+
+    Note the similarity to scenario two where the end of the first slice block
+    and the start of the second slice block have the same value. The presence
+    of the "negative" slice block of length 3 between the two positive
+    slice blocks indicates that there are three positions in between
+    that have an undefined position in the reference.
+
+    """
+    assert len(ref_seq) == len(other_seq), 'sequence lengths are not the same'
+    block_list = []
+    seq_cnt = 0
+    gap_cnt = 0
+    start = 0
+    prev_ref = ref_seq[0]
+    prev_seq = other_seq[0]
+    # Handle the first column
+    if (prev_ref != gapchar) and (prev_seq != gapchar):
+        if debug:
+            print(seq_cnt, sep=' ', end=' ')
+        seq_cnt += 1
+    elif (prev_ref != gapchar) and (prev_seq == gapchar):
+        if debug:
+            print(seq_cnt, sep=' ', end=' ')
+        seq_cnt += 1
+    elif (prev_ref == gapchar) and (prev_seq == gapchar):
+        if debug:
+            print(seq_cnt, sep=' ', end=' ')
+    elif (prev_ref == gapchar) and (prev_seq != gapchar):
+        if debug:
+            print(seq_cnt, sep=' ', end=' ')
+        gap_cnt += 1
+
+    for a, b in zip(ref_seq[1:], other_seq[1:]):  # pylint: disable=invalid-name
+
+        # Current site are both filled.
+        if (a != gapchar) and (b != gapchar):
+            # Previous site is filled for both.
+            # Current site is also filled for both.
+            # a : ATG...
+            # b : ATG...
+            #     |^
+            if gap_cnt == 0 and (prev_ref != gapchar and prev_seq != gapchar):
+                if debug:
+                    print('|', seq_cnt, sep=' ', end=' ')
+            # Previous site is filled in for the reference and
+            # gapped for the other sequence.
+            # Current site is filled for both.
+            # a : ATG...
+            # b : --G...
+            #      _^
+            elif gap_cnt == 0 and (prev_ref != gapchar and prev_seq == gapchar):
+                if debug:
+                    print('_', seq_cnt, sep=' ', end=' ')
+                start = seq_cnt
+            # Previous site is gapped for both.
+            # Current site is filled for both.
+            # a : --G...
+            # b : --G...
+            #      =^
+            elif gap_cnt == 0 and (prev_ref == gapchar and prev_seq == gapchar):
+                if debug:
+                    print('=', seq_cnt, sep=' ', end=' ')
+                start = seq_cnt
+            # Previous site is gapped in the reference and
+            # filled in the other sequence.
+            # Current site is filled for both.
+            # a : --G...
+            # b : ATG...
+            #      -^
+            elif gap_cnt > 0 and (prev_ref == gapchar and prev_seq != gapchar):
+                if debug:
+                    print('-', seq_cnt, sep=' ', end=' ')
+                block_list.append(slice(-1 - gap_cnt, -1, -1))
+                gap_cnt = 0
+                start = seq_cnt
+
+            seq_cnt += 1
+
+        # Current site is filled in the reference and
+        # gapped in the other sequence.
+        elif (a != gapchar) and (b == gapchar):
+            # Previous site is filled for both.
+            # Current site is filled in the reference and
+            # gapped for the other sequence.
+            # a : ATG...
+            # b : A-G...
+            #     |^
+            if gap_cnt == 0 and (prev_ref != gapchar and prev_seq != gapchar):
+                if debug:
+                    print('|', seq_cnt, sep=' ', end=' ')
+                block_list.append(slice(start, seq_cnt))
+            # Previous site is filled in the reference and
+            # gapped in the other sequence.
+            # Current site is also filled in the reference and
+            # also gapped for the other sequence.
+            # a : ATG...
+            # b : --G...
+            #     _^
+            elif gap_cnt == 0 and (prev_ref != gapchar and prev_seq == gapchar):
+                if debug:
+                    print('_', seq_cnt, sep=' ', end=' ')
+            # Previous site is gapped for both.
+            # Current site is filled in the reference and
+            # gapped for the other sequence.
+            # a : -TG...
+            # b : --G...
+            #     =^
+            elif gap_cnt == 0 and (prev_ref == gapchar and prev_seq == gapchar):
+                if debug:
+                    print('=', seq_cnt, sep=' ', end=' ')
+            # Previous site is gapped in the reference and
+            # filled in the other sequence.
+            # Current site is filled in the reference and
+            # gapped for the other sequence.
+            # a : -TG...
+            # b : A-G...
+            #     -^
+            elif gap_cnt > 0 and (prev_ref == gapchar and prev_seq != gapchar):
+                if debug:
+                    print('-', seq_cnt, sep=' ', end=' ')
+                block_list.append(slice(-1 - gap_cnt, -1, -1))
+                gap_cnt = 0
+
+            seq_cnt += 1
+
+        # Current site is gapped for both.
+        elif(a == gapchar) and (b == gapchar):
+            # Previous site is filled for both.
+            # Current site is gapped for both.
+            # a : A--...
+            # b : A--...
+            #     |^
+            if gap_cnt == 0 and (prev_ref != gapchar and prev_seq != gapchar):
+                if debug:
+                    print('|', seq_cnt, sep=' ', end=' ')
+                block_list.append(slice(start, seq_cnt))
+            # Previous site is filled in the reference and
+            # gapped in the other sequence.
+            # Current site is gapped for both.
+            # a : A-G...
+            # b : --G...
+            #     _^
+            elif gap_cnt == 0 and (prev_ref != gapchar and prev_seq == gapchar):
+                if debug:
+                    print('_', seq_cnt, sep=' ', end=' ')
+            # Previous site is gapped for both.
+            # Current site is gapped for both.
+            # a : --G...
+            # b : --G...
+            #     =^
+            elif gap_cnt == 0 and (prev_ref == gapchar and prev_seq == gapchar):
+                if debug:
+                    print('=', seq_cnt, sep=' ', end=' ')
+            # Previous site is gapped in the reference and
+            # filled in the other sequence.
+            # Current site is gapped for both.
+            # a : --G...
+            # b : A-G...
+            #     -^
+            elif gap_cnt > 0 and (prev_ref == gapchar and prev_seq != gapchar):
+                if debug:
+                    print('-', seq_cnt, sep=' ', end=' ')
+                block_list.append(slice(-1 - gap_cnt, -1, -1))
+                gap_cnt = 0
+
+        # Current site is gapped in the reference and
+        # filled in the other sequence.
+        elif(a == gapchar) and (b != gapchar):
+            # Previous site is filled for both.
+            # Current site is gapped in the reference and
+            # filled in the other sequence.
+            # a : A--...
+            # b : ATG...
+            #     |^
+            if gap_cnt == 0 and (prev_ref != gapchar and prev_seq != gapchar):
+                if debug:
+                    print('|', seq_cnt, sep=' ', end=' ')
+                block_list.append(slice(start, seq_cnt))
+                start = seq_cnt
+            # Previous site is filled in the reference and
+            # gapped in the other sequence.
+            # Current site is gapped in the reference and
+            # filled in the other sequence.
+            # a : A-G...
+            # b : -TG...
+            #     _^
+            elif gap_cnt == 0 and (prev_ref != gapchar and prev_seq == gapchar):
+                if debug:
+                    print('_', seq_cnt, sep=' ', end=' ')
+            # Previous site is gapped for both.
+            # Current site is gapped in the reference and
+            # filled in the other sequence.
+            # a : --G...
+            # b : -TG...
+            #     =^
+            elif gap_cnt == 0 and (prev_ref == gapchar and prev_seq == gapchar):
+                if debug:
+                    print('=', seq_cnt, sep=' ', end=' ')
+            # Previous site is gapped in the reference and
+            # filled in the other sequence.
+            # Current site is also gapped in the reference and
+            # also filled in the other sequence.
+            # a : --G...
+            # b : ATG...
+            #     -^
+            elif gap_cnt > 0 and (prev_ref == gapchar and prev_seq != gapchar):
+                if debug:
+                    print('-', seq_cnt, sep=' ', end=' ')
+
+            gap_cnt += 1
+
+        prev_ref = a
+        prev_seq = b
+
+    if gap_cnt > 0:
+        if debug:
+            print('-', seq_cnt, sep=' ', end=' ')
+        block_list.append(slice(-1 - gap_cnt, -1, -1))
+    else:
+        if gap_cnt == 0 and (prev_ref != gapchar and prev_seq != gapchar):
+            if debug:
+                print('|', seq_cnt, sep=' ', end=' ')
+        elif gap_cnt == 0 and (prev_ref != gapchar and prev_seq == gapchar):
+            if debug:
+                print('_', seq_cnt, sep=' ', end=' ')
+        elif gap_cnt == 0 and (prev_ref == gapchar and prev_seq == gapchar):
+            if debug:
+                print('=', seq_cnt, sep=' ', end=' ')
+        block_list.append(slice(start, seq_cnt))
+
+    return block_list
+
+
 def remove_sites(seq, block_list, removed_pos_list, zero_indexed=True):
     """Removes parts of the sequence using a list of positions and
     updated associated block list.
@@ -195,7 +506,7 @@ def remove_sites(seq, block_list, removed_pos_list, zero_indexed=True):
 
     # Edit block
     block_pos_array = block_pos_array[rel_pos_array]
-    new_block_list = range_to_blocks(block_pos_array)
+    new_block_list = array_to_blocks(block_pos_array)
     if not zero_indexed:
         new_block_list = list(map(to_one_index_slice, new_block_list))
 
