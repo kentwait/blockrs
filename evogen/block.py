@@ -3,7 +3,7 @@
 """
 import numpy as np
 
-def range_to_blocks(range_list):
+def array_to_blocks(range_list):
     """Converts an explicit list of positions into a list of blocks.
 
     Parameters
@@ -18,8 +18,10 @@ def range_to_blocks(range_list):
     Example
     -------
     >>> lst = [1, 3, 5, 6, 7]
+    >>> array_to_blocks(lst)
     [slice(1, 2, None), slice(3, 4, None), slice(5, 8, None)]
     >>> lst = [0, 1, -1, -2, 5, 6, 7]
+    >>> array_to_blocks(lst)
     [slice(0, 2, None), slice(-1, -3, None), slice(5, 8, None)]
 
     """
@@ -46,7 +48,7 @@ def range_to_blocks(range_list):
     return block_list
 
 
-def blocks_to_pos_array(block_list):
+def blocks_to_array(block_list):
     """Converts a list of blocks (slices) into an explicit
     listing of positions.
 
