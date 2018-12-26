@@ -499,7 +499,7 @@ def genpos_file_to_dicts(path, convert_to_zero_based_index=True):
     return tr_meta_d, cds_d, intron_d
 
 
-def genpos_file_to_dataframes(path, convert_to_zero_based_index=True):
+def genpos_file_to_df(path, convert_to_zero_based_index=True):
     """Reads a genpos file and stores its contents into three separate pandas
     DataFrames (transcript metadata, exons, introns).
 
@@ -810,10 +810,10 @@ def btw_counts_file_to_dict(path,
     return pattern_d, prob_d
 
 
-def btw_counts_file_to_dataframe(path,
-                                 anc_states_keyword='ms_m*',
-                                 # summarize=True,
-                                 join=True):
+def btw_counts_file_to_df(path,
+                          anc_states_keyword='ms_m*',
+                          # summarize=True,
+                          join=True):
     """Reads the ancestral configuration counts file from the BTW analysis
     into a normalized pandas DataFrame.
 
@@ -954,10 +954,10 @@ def btw_sites_file_to_dict(path, anc_states_keyword='ms_m*',
     return site_d, prob_d
 
 
-def btw_sites_file_to_dataframe(path,
-                                anc_states_keyword='ms_m*',
-                                # summarize=True,
-                                join=True):
+def btw_sites_file_to_df(path,
+                         anc_states_keyword='ms_m*',
+                         # summarize=True,
+                         join=True):
     """Reads the ancestral configuration sites file from the BTW analysis
     into a normalized pandas DataFrame.
 
