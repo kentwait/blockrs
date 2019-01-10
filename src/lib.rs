@@ -6,6 +6,41 @@ use cpython::{Python, PyResult};
 use std::str;
 use std::io::Write;
 
+fn array_to_blocks(range_list: Vec<i32>) -> Vec<(i32, i32, i32)> {
+    let block_list: Vec<(i32, i32, i32)> = Vec::new();
+    let mut start = block_list[0];
+    let mut prev = block_list[0];
+
+    for current in block_list.iter().skip(1) {
+        if prev >= 0 & current >= 0 {
+            if prev + 1 != current {
+                block_list.push((start, prev + 1, 1));
+                start = current;
+            }
+        } else if prev >= 0 & current < 0 {
+            block_list.push((start, prev + 1, 1));
+            start = current;
+        } else if prev < 0 & current < 0 {
+            if prev - 1 != current {
+                block_list.push((start, prev - 1, -1));
+                start = current;
+            }
+        } else if prev < 0 & current >= 0 {
+            block_list.push((start, prev - 1, -1));
+            start = current;
+        }
+        prev = current;
+    }
+
+    if prev >= 0 {
+        block_list.push((start, prev + 1, 1));
+    } else {
+        block_list.push((start, prev - 1, -1));
+    }
+
+    block_list
+}
+
 fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<(i32, i32, i32)> {
     // Check if sequence lengths are the same
     // TODO: Change into an assert
@@ -188,12 +223,21 @@ fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<(i32, 
     block_list
 }
 
+// Wraps array_to_blocks in order to be exportable
+fn py_array_to_blocks(_py: Python, range_list: Vec<i32>) -> PyResult<Vec<(i32, i32, i32)>> {
+    let out = array_to_blocks(range_list);
+    Ok(out)
+}
+
+// Wraps pairwise_to_blocks in order to be exportable
 fn py_pairwise_to_blocks(_py: Python, ref_seq: &str, other_seq: &str, debug: bool) -> PyResult<Vec<(i32, i32, i32)>> {
     let out = pairwise_to_blocks(ref_seq, other_seq, debug);
     Ok(out)
 }
 
-py_module_initializer!(alnblock, initalnblock, PyInit_alnblock, |py, m| { 
+py_module_initializer!(blockcodec, initblockcodec, PyInit_blockcodec, |py, m| { 
+    m.add(py, "array_to_blocks", py_fn!(py, 
+        py_array_to_blocks(range_list: Vec<i32>)))?;
     m.add(py, "pairwise_to_blocks", py_fn!(py, 
         py_pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool)))?;
 
