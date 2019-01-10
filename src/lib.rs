@@ -7,35 +7,42 @@ use std::str;
 use std::io::Write;
 
 fn array_to_blocks(range_list: Vec<i32>) -> Vec<(i32, i32, i32)> {
-    let block_list: Vec<(i32, i32, i32)> = Vec::new();
-    let mut start = block_list[0];
-    let mut prev = block_list[0];
+    let mut block_list: Vec<(i32, i32, i32)> = Vec::new();
+    let mut start: i32 = range_list[0];
+    let mut prev: i32 = range_list[0];
 
-    for current in block_list.iter().skip(1) {
-        if prev >= 0 & current >= 0 {
+    for current in range_list.iter().skip(1) {
+        let current: i32 = *current;
+        if (prev >= 0) & (current >= 0) {
             if prev + 1 != current {
-                block_list.push((start, prev + 1, 1));
+                let block = (start, prev + 1, 1);
+                block_list.push(block);
                 start = current;
             }
-        } else if prev >= 0 & current < 0 {
-            block_list.push((start, prev + 1, 1));
+        } else if (prev >= 0) & (current < 0) {
+            let block = (start, prev + 1, 1);
+            block_list.push(block);
             start = current;
-        } else if prev < 0 & current < 0 {
+        } else if (prev < 0) & (current < 0) {
             if prev - 1 != current {
-                block_list.push((start, prev - 1, -1));
+                let block = (start, prev - 1, -1);
+                block_list.push(block);
                 start = current;
             }
-        } else if prev < 0 & current >= 0 {
-            block_list.push((start, prev - 1, -1));
+        } else if (prev < 0) & (current >= 0) {
+            let block = (start, prev - 1, -1);
+            block_list.push(block);
             start = current;
         }
         prev = current;
     }
 
     if prev >= 0 {
-        block_list.push((start, prev + 1, 1));
+        let block = (start, prev + 1, 1);
+        block_list.push(block);
     } else {
-        block_list.push((start, prev - 1, -1));
+        let block = (start, prev - 1, -1);
+        block_list.push(block);
     }
 
     block_list
