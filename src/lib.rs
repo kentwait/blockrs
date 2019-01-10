@@ -48,6 +48,24 @@ fn array_to_blocks(range_list: Vec<i32>) -> Vec<(i32, i32, i32)> {
     block_list
 }
 
+fn blocks_to_array(block_list: Vec<(i32, i32)>) -> Vec<i32> {
+    let mut pos_array: Vec<i32> = Vec::new();
+    for (start, stop) in block_list {
+        if start <= stop {
+            for i in start..stop {
+                pos_array.push(i);
+            }
+        } else {
+            let start = start + 1;
+            let stop = stop + 1;
+            for i in (stop..start).rev() {
+                pos_array.push(i);
+            }
+        }
+    }
+    pos_array
+}
+
 fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<(i32, i32, i32)> {
     // Check if sequence lengths are the same
     // TODO: Change into an assert
@@ -236,6 +254,12 @@ fn py_array_to_blocks(_py: Python, range_list: Vec<i32>) -> PyResult<Vec<(i32, i
     Ok(out)
 }
 
+// Wraps blocks_to_array in order to be exportable
+fn py_blocks_to_array(_py: Python, block_list: Vec<(i32, i32)>) -> PyResult<Vec<i32>> {
+    let out = blocks_to_array(block_list);
+    Ok(out)
+}
+
 // Wraps pairwise_to_blocks in order to be exportable
 fn py_pairwise_to_blocks(_py: Python, ref_seq: &str, other_seq: &str, debug: bool) -> PyResult<Vec<(i32, i32, i32)>> {
     let out = pairwise_to_blocks(ref_seq, other_seq, debug);
@@ -245,6 +269,8 @@ fn py_pairwise_to_blocks(_py: Python, ref_seq: &str, other_seq: &str, debug: boo
 py_module_initializer!(blockcodec, initblockcodec, PyInit_blockcodec, |py, m| { 
     m.add(py, "array_to_blocks", py_fn!(py, 
         py_array_to_blocks(range_list: Vec<i32>)))?;
+    m.add(py, "blocks_to_array", py_fn!(py, 
+        py_blocks_to_array(block_list: Vec<(i32, i32)>)))?;
     m.add(py, "pairwise_to_blocks", py_fn!(py, 
         py_pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool)))?;
 
