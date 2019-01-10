@@ -188,6 +188,18 @@ fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<(i32, 
     block_list
 }
 
+fn py_pairwise_to_blocks(_py: Python, ref_seq: &str, other_seq: &str, debug: bool) -> PyResult<Vec<(i32, i32, i32)>> {
+    let out = pairwise_to_blocks(ref_seq, other_seq, debug);
+    Ok(out)
+}
+
+py_module_initializer!(alnblock, initalnblock, PyInit_alnblock, |py, m| { 
+    m.add(py, "pairwise_to_blocks", py_fn!(py, 
+        py_pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool)))?;
+
+    Ok(())
+});
+
 #[cfg(test)]
 mod tests {
     #[test]
