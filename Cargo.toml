@@ -1,7 +1,13 @@
 [package]
 name = "blockcodec"
 version = "0.1.0"
-authors = ["kent <kentkawashima@gmail.com>"]
+authors = ["Kent Kawashima <kentkawashima@gmail.com>"]
 edition = "2018"
 
-[dependencies]
+[lib]
+name = "alnblock"
+crate-type = ["dylib"]
+
+[dependencies.cpython]
+version = "0.2"
+features = ["extension-module"]
