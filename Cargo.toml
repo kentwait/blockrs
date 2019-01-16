@@ -6,8 +6,8 @@ edition = "2018"
 
 [lib]
 name = "blockcodec"
-crate-type = ["dylib"]
+crate-type = ["cdylib"]
 
-[dependencies.cpython]
-version = "0.2"
+[dependencies.pyo3]
+version = "0.5"
 features = ["extension-module"]

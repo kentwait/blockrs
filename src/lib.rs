@@ -1,13 +1,38 @@
-#[macro_use]
-extern crate cpython;
+#![feature(specialization)]
 
-use cpython::{Python, PyResult};
+#[macro_use]
+extern crate pyo3;
+
+use pyo3::prelude::*;
 
 use std::str;
 use std::io::Write;
 
-fn array_to_blocks(range_list: Vec<i32>) -> Vec<(i32, i32)> {
-    let mut block_list: Vec<(i32, i32)> = Vec::new();
+#[pyclass]
+struct Block {
+    start: i32,
+    stop: i32,
+}
+
+#[pymethods]
+impl Block {
+    #[new]
+    fn __new__(obj: &PyRawObject, start: i32, stop: i32) -> PyResult<()> {
+        obj.init(|_| {
+            Block { start, stop }
+        })
+    }
+}
+
+impl Block {
+    fn new(start: i32, stop: i32) -> Block {
+        Block { start, stop }
+    }
+}
+
+#[pyfunction]
+fn array_to_blocks(range_list: Vec<i32>) -> Vec<Block> {
+    let mut block_list: Vec<Block> = Vec::new();
     let mut start: i32 = range_list[0];
     let mut prev: i32 = range_list[0];
 
@@ -15,22 +40,22 @@ fn array_to_blocks(range_list: Vec<i32>) -> Vec<(i32, i32)> {
         let current: i32 = *current;
         if (prev >= 0) & (current >= 0) {
             if prev + 1 != current {
-                let block = (start, prev + 1);
+                let block = Block::new(start, prev + 1);
                 block_list.push(block);
                 start = current;
             }
         } else if (prev >= 0) & (current < 0) {
-            let block = (start, prev + 1);
+            let block = Block::new(start, prev + 1);
             block_list.push(block);
             start = current;
         } else if (prev < 0) & (current < 0) {
             if prev - 1 != current {
-                let block = (start, prev - 1);
+                let block = Block::new(start, prev - 1);
                 block_list.push(block);
                 start = current;
             }
         } else if (prev < 0) & (current >= 0) {
-            let block = (start, prev - 1);
+            let block = Block::new(start, prev - 1);
             block_list.push(block);
             start = current;
         }
@@ -38,18 +63,19 @@ fn array_to_blocks(range_list: Vec<i32>) -> Vec<(i32, i32)> {
     }
 
     if prev >= 0 {
-        let block = (start, prev + 1);
+        let block = Block::new(start, prev + 1);
         block_list.push(block);
     } else {
-        let block = (start, prev - 1);
+        let block = Block::new(start, prev - 1);
         block_list.push(block);
     }
 
     block_list
 }
 
-fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<(i32, i32)> {
-    let mut block_list: Vec<(i32, i32)> = Vec::new();
+#[pyfunction]
+fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<Block> {
+    let mut block_list: Vec<Block> = Vec::new();
     let mut prev_item: Option<i32> = range_list[0];
 
     let mut start: i32 = -1e9 as i32;
@@ -66,33 +92,33 @@ fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<(i32, i32)> {
                 let current = *v;
                 if (prev >= 0) && (current >= 0) {
                     if prev + 1 != current {
-                        let block = (start, prev + 1);
+                        let block = Block::new(start, prev + 1);
                         block_list.push(block);
                         start = current;
                     }
                 } else if (prev >= 0) && (current < 0) {
-                    let block = (start, prev + 1);
+                    let block = Block::new(start, prev + 1);
                     block_list.push(block);
                     start = current;
                 } else if (prev < 0) && (current < 0) {
                     if prev - 1 != current {
-                        let block = (start, prev - 1);
+                        let block = Block::new(start, prev - 1);
                         block_list.push(block);
                         start = current;
                     }
                 } else if (prev < 0) && (current >= 0) {
-                    let block = (start, prev - 1);
+                    let block = Block::new(start, prev - 1);
                     block_list.push(block);
                     start = current;
                 }
             } else {
                 // prev has value, current is None
                 if prev >= 0 {
-                    let block = (start, prev + 1);
+                    let block = Block::new(start, prev + 1);
                     block_list.push(block);
                     start = -1e9 as i32;
                 } else {
-                    let block = (start, prev - 1);
+                    let block = Block::new(start, prev - 1);
                     block_list.push(block);
                     start = -1e9 as i32;
                 }
@@ -110,10 +136,10 @@ fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<(i32, i32)> {
         // prev has a value
         let prev = u;
         if prev >= 0 {
-            let block = (start, prev + 1);
+            let block = Block::new(start, prev + 1);
             block_list.push(block);
         } else {
-            let block = (start, prev - 1);
+            let block = Block::new(start, prev - 1);
             block_list.push(block);
         }
     }
@@ -122,9 +148,11 @@ fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<(i32, i32)> {
     block_list
 }
 
-fn blocks_to_array(block_list: Vec<(i32, i32)>) -> Vec<i32> {
+#[pyfunction]
+fn blocks_to_array(block_list: Vec<Block>) -> Vec<i32> {
     let mut pos_array: Vec<i32> = Vec::new();
-    for (start, stop) in block_list {
+    for block in block_list {
+        let Block { start, stop } = block;
         if start <= stop {
             for i in start..stop {
                 pos_array.push(i);
@@ -140,7 +168,8 @@ fn blocks_to_array(block_list: Vec<(i32, i32)>) -> Vec<i32> {
     pos_array
 }
 
-fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<(i32, i32)> {
+#[pyfunction]
+fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<Block> {
     // Check if sequence lengths are the same
     // TODO: Change into an assert
     if ref_seq.len() != other_seq.len() {
@@ -150,7 +179,7 @@ fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<(i32, 
     // Declare variables
     // let ref_seq: &str = ref_seq.as_str();
     // let other_seq: &str = other_seq.as_str();
-    let mut block_list: Vec<(i32, i32)> = Vec::new();
+    let mut block_list: Vec<Block> = Vec::new();
     let mut seq_cnt: i32 = 0;
     let mut gap_cnt: i32 = 0;
     let mut start: i32 = 0;
@@ -200,7 +229,7 @@ fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<(i32, 
                 if debug == true {
                     print!("- {} ", seq_cnt);
                 }
-                let block = (-1, -1 - gap_cnt);
+                let block = Block::new(-1, -1 - gap_cnt);
                 block_list.push(block);
                 gap_cnt = 0;
                 start = seq_cnt;
@@ -214,7 +243,7 @@ fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<(i32, 
                 if debug == true {
                     print!("| {} ", seq_cnt);
                 }
-                let block = (start, seq_cnt);
+                let block = Block::new(start, seq_cnt);
                 block_list.push(block);
             } else if gap_cnt == 0 && {prev_ref != gap_char && prev_seq == gap_char} {
                 if debug == true {
@@ -228,7 +257,7 @@ fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<(i32, 
                 if debug == true {
                     print!("- {} ", seq_cnt);
                 }
-                let block = (-1, -1 - gap_cnt);
+                let block = Block::new(-1, -1 - gap_cnt);
                 block_list.push(block);
                 gap_cnt = 0;
             }
@@ -240,7 +269,7 @@ fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<(i32, 
                 if debug == true {
                     print!("| {} ", seq_cnt);
                 }
-                let block = (start, seq_cnt);
+                let block = Block::new(start, seq_cnt);
                 block_list.push(block);
             } else if gap_cnt == 0 && {prev_ref != gap_char && prev_seq == gap_char} {
                 if debug == true {
@@ -254,7 +283,7 @@ fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<(i32, 
                 if debug == true {
                     print!("- {} ", seq_cnt);
                 }
-                let block = (-1, -1 - gap_cnt);
+                let block = Block::new(-1, -1 - gap_cnt);
                 block_list.push(block);
                 gap_cnt = 0;
             }
@@ -265,7 +294,7 @@ fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<(i32, 
                 if debug == true {
                     print!("| {} ", seq_cnt);
                 }
-                let block = (start, seq_cnt);
+                let block = Block::new(start, seq_cnt);
                 block_list.push(block);
                 start = seq_cnt;
             } else if gap_cnt == 0 && {prev_ref != gap_char && prev_seq == gap_char} {
@@ -293,14 +322,14 @@ fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<(i32, 
         if debug == true {
             print!("- {}", seq_cnt);
         }
-        let block = (-1, -1 - gap_cnt);
+        let block = Block::new(-1, -1 - gap_cnt);
         block_list.push(block);
     } else {
         if gap_cnt == 0 && {prev_ref != gap_char && prev_seq != gap_char} {
             if debug == true {
                 print!("| {} ", seq_cnt);
             }
-            let block = (start, seq_cnt);
+            let block = Block::new(start, seq_cnt);
             block_list.push(block);
         } else if gap_cnt == 0 && {prev_ref != gap_char && prev_seq == gap_char} {
             if debug == true {
@@ -322,7 +351,8 @@ fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<(i32, 
     block_list
 }
 
-fn remove_sites(seq: &str, block_list: Vec<(i32, i32)>, mut remove_pos_list:  Vec<usize>, gap_char: &str) -> (String, Vec<(i32, i32)>) {
+#[pyfunction]
+fn remove_sites(seq: &str, block_list: Vec<Block>, mut remove_pos_list:  Vec<usize>, gap_char: &str) -> (String, Vec<Block>) {
     let gap_char = gap_char.chars().next().unwrap();
     // Unrolled blocks into positional array
     let block_array: Vec<i32> = blocks_to_array(block_list);
@@ -360,41 +390,51 @@ fn remove_sites(seq: &str, block_list: Vec<(i32, i32)>, mut remove_pos_list:  Ve
     (new_seq, new_block_list)
 }
 
-// Wraps array_to_blocks in order to be exportable
-fn py_array_to_blocks(_py: Python, range_list: Vec<i32>) -> PyResult<Vec<(i32, i32)>> {
-    let out = array_to_blocks(range_list);
-    Ok(out)
-}
+// // Wraps array_to_blocks in order to be exportable
+// fn py_array_to_blocks(_py: Python, range_list: Vec<i32>) -> PyResult<Vec<Block>> {
+//     let out = array_to_blocks(range_list);
+//     Ok(out)
+// }
 
-// Wraps blocks_to_array in order to be exportable
-fn py_blocks_to_array(_py: Python, block_list: Vec<(i32, i32)>) -> PyResult<Vec<i32>> {
-    let out = blocks_to_array(block_list);
-    Ok(out)
-}
+// // Wraps blocks_to_array in order to be exportable
+// fn py_blocks_to_array(_py: Python, block_list: Vec<Block>) -> PyResult<Vec<i32>> {
+//     let out = blocks_to_array(block_list);
+//     Ok(out)
+// }
 
-// Wraps pairwise_to_blocks in order to be exportable
-fn py_pairwise_to_blocks(_py: Python, ref_seq: &str, other_seq: &str, debug: bool) -> PyResult<Vec<(i32, i32)>> {
-    let out = pairwise_to_blocks(ref_seq, other_seq, debug);
-    Ok(out)
-}
+// // Wraps pairwise_to_blocks in order to be exportable
+// fn py_pairwise_to_blocks(_py: Python, ref_seq: &str, other_seq: &str, debug: bool) -> PyResult<Vec<Block>> {
+//     let out = pairwise_to_blocks(ref_seq, other_seq, debug);
+//     Ok(out)
+// }
 
-// Wraps remove_sites in order to be exportable
-fn py_remove_sites(_py: Python, seq: &str, block_list: Vec<(i32, i32)>, remove_pos_list: Vec<usize>, gap_char: &str) -> PyResult<(String, Vec<(i32, i32)>)> {
-    let out = remove_sites(seq, block_list, remove_pos_list, gap_char);
-    Ok(out)
-}
+// // Wraps remove_sites in order to be exportable
+// fn py_remove_sites(_py: Python, seq: &str, block_list: Vec<Block>, remove_pos_list: Vec<usize>, gap_char: &str) -> PyResult<(String, Vec<Block>)> {
+//     let out = remove_sites(seq, block_list, remove_pos_list, gap_char);
+//     Ok(out)
+// }
 
-py_module_initializer!(blockcodec, initblockcodec, PyInit_blockcodec, |py, m| { 
-    m.add(py, "array_to_blocks", py_fn!(py, 
-        py_array_to_blocks(range_list: Vec<i32>)))?;
-    m.add(py, "blocks_to_array", py_fn!(py, 
-        py_blocks_to_array(block_list: Vec<(i32, i32)>)))?;
-    m.add(py, "pairwise_to_blocks", py_fn!(py, 
-        py_pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool)))?;
-    m.add(py, "remove_sites", py_fn!(py, 
-        py_remove_sites(seq: &str, block_list: Vec<(i32, i32)>, remove_pos_list: Vec<usize>, gap_char: &str)))?;
+// py_module_initializer!(blockcodec, initblockcodec, PyInit_blockcodec, |py, m| { 
+//     m.add_function(py, "array_to_blocks", py_fn!(py, 
+//         py_array_to_blocks(range_list: Vec<i32>)))?;
+//     m.add_function(py, "blocks_to_array", py_fn!(py, 
+//         py_blocks_to_array(block_list: Vec<Block>)))?;
+//     m.add_function(py, "pairwise_to_blocks", py_fn!(py, 
+//         py_pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool)))?;
+//     m.add_function(py, "remove_sites", py_fn!(py, 
+//         py_remove_sites(seq: &str, block_list: Vec<Block>, remove_pos_list: Vec<usize>, gap_char: &str)))?;
+//     Ok(())
+// });
+
+#[pymodinit]
+fn blockcodec(py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_function(wrap_function!(array_to_blocks)).unwrap();
+    m.add_function(wrap_function!(blocks_to_array)).unwrap();
+    m.add_function(wrap_function!(pairwise_to_blocks)).unwrap();
+    m.add_function(wrap_function!(remove_sites)).unwrap();
+
     Ok(())
-});
+}
 
 #[cfg(test)]
 mod tests {
