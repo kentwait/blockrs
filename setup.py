@@ -81,8 +81,8 @@ def main():
         # ],
         # platforms=["macOS", "Windows", "X11"],
         rust_extensions=[
-            RustExtension('evogen.block', 'Cargo.toml', binding=Binding.PyO3),
-            RustExtension('evogen.fasta', 'Cargo.toml', binding=Binding.PyO3),
+            RustExtension('evogen_rust.block', 'Cargo.toml', binding=Binding.PyO3),
+            RustExtension('evogen_rust.fasta', 'Cargo.toml', binding=Binding.PyO3),
         ],
         packages=['evogen'],
         zip_safe=False,  # Rust extensions are not zip safe, like C-extensions.

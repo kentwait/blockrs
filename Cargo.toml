@@ -5,7 +5,7 @@ authors = ["Kent Kawashima <kentkawashima@gmail.com>"]
 edition = "2018"
 
 [lib]
-name = "evogen"
+name = "evogen_rust"
 crate-type = ["cdylib"]
 
 [dependencies.pyo3]
