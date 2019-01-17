@@ -137,7 +137,7 @@ pub fn read_fasta(path: &str) -> Vec<Seq> {
 /// write_fastq(sequences, path, linewidth)
 /// 
 /// Writes a fasta file given a list of Seq objects.
-pub fn write_fastq(sequences: Vec<&Seq>, path: &str, linewidth: i32) -> i32 {
+pub fn write_fasta(sequences: Vec<&Seq>, path: &str, linewidth: i32) -> i32 {
     let mut file = match File::create(path) {
         Ok(file) => file,
         Err(x) => panic!("couldn't create {}: {}", path, x),
@@ -177,7 +177,7 @@ pub fn write_fastq(sequences: Vec<&Seq>, path: &str, linewidth: i32) -> i32 {
 #[pymodinit]
 fn fasta(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_function!(read_fasta)).unwrap();
-    m.add_function(wrap_function!(write_fastq)).unwrap();
+    m.add_function(wrap_function!(write_fasta)).unwrap();
 
     // Add Block class
     m.add_class::<Seq>()?;
