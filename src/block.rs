@@ -415,7 +415,7 @@ fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Vec<us
 }
 
 #[pymodinit]
-fn blockcodec(_py: Python, m: &PyModule) -> PyResult<()> {
+fn block(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_function!(array_to_blocks)).unwrap();
     m.add_function(wrap_function!(blocks_to_array)).unwrap();
     m.add_function(wrap_function!(pairwise_to_blocks)).unwrap();
