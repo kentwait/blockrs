@@ -18,10 +18,10 @@ use std::io::Write;
 pub struct Block {
 
     #[prop(get, set)]
-    start: i32,
+    pub start: i32,
 
     #[prop(get, set)]
-    stop: i32,
+    pub stop: i32,
 }
 
 #[pymethods]
@@ -35,12 +35,14 @@ impl Block {
     }
 }
 
+// Block::new method for Rust
 impl Block {
-    fn new(start: i32, stop: i32) -> Block {
+    pub fn new(start: i32, stop: i32) -> Block {
         Block { start, stop }
     }
 }
 
+// Customizes __repr__ and __str__ of PyObjectProtocol trait
 #[pyproto]
 impl PyObjectProtocol for Block {
     fn __repr__(&self) -> PyResult<String> {
@@ -57,7 +59,7 @@ impl PyObjectProtocol for Block {
 /// 
 /// Converts an explicit list of positions into a list of blocks.
 /// Returns a list of Block objects.
-fn array_to_blocks(range_list: Vec<i32>) -> Vec<Block> {
+pub fn array_to_blocks(range_list: Vec<i32>) -> Vec<Block> {
     let mut block_list: Vec<Block> = Vec::new();
     let mut start: i32 = range_list[0];
     let mut prev: i32 = range_list[0];
@@ -169,7 +171,6 @@ fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<Block> {
         }
     }
     
-
     block_list
 }
 
@@ -178,7 +179,7 @@ fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<Block> {
 /// 
 /// Converts a list of Block objects into an explicit listing of positions.
 /// Returns a list of integers.
-fn blocks_to_array(block_list: Vec<&Block>) -> Vec<i32> {
+pub fn blocks_to_array(block_list: Vec<&Block>) -> Vec<i32> {
     let mut pos_array: Vec<i32> = Vec::new();
     for block in block_list {
         let Block { start, stop } = *block;
@@ -202,7 +203,7 @@ fn blocks_to_array(block_list: Vec<&Block>) -> Vec<i32> {
 /// 
 /// Applies the positions of ungapped sites in the reference sequence unto the target.
 /// Returns a list of Block objects
-fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<Block> {
+pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<Block> {
     // Check if sequence lengths are the same
     // TODO: Change into an assert
     if ref_seq.len() != other_seq.len() {
@@ -388,7 +389,7 @@ fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<Block>
 /// remove_sites(seq, block_list, remove_pos_list, gap_char)
 /// 
 /// Removes parts of the sequence using a list of positions and updated associated block list.
-fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Vec<usize>, gap_char: &str) -> (String, Vec<Block>) {
+pub fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Vec<usize>, gap_char: &str) -> (String, Vec<Block>) {
     let gap_char = gap_char.chars().next().unwrap();
     // Unrolled blocks into positional array
     let block_array: Vec<i32> = blocks_to_array(block_list);

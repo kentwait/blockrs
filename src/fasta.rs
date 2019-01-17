@@ -11,16 +11,16 @@ use std::io::prelude::*;
 /// It is composed of id, description, and sequence properties which correspond to the following fields in the fasta file: 
 /// >{id} {description}
 /// {sequence}
-struct Seq {
+pub struct Seq {
 
     #[prop(get, set)]
-    id: String,
+    pub id: String,
 
     #[prop(get, set)]
-    description: String,
+    pub description: String,
 
     #[prop(get, set)]
-    sequence: String,
+    pub sequence: String,
 }
 
 #[pymethods]
@@ -34,9 +34,10 @@ impl Seq {
     }
 }
 
+// Seq::new method for Rust
 impl Seq {
     /// Creates a new Block object from start and stop values.
-    fn new(id: &str, description: &str, sequence: &str) -> Seq {
+    pub fn new(id: &str, description: &str, sequence: &str) -> Seq {
         Seq {
             id: id.to_string(),
             description: description.to_string(),
@@ -45,6 +46,7 @@ impl Seq {
     }
 }
 
+// Customizes __repr__ and __str__ of PyObjectProtocol trait
 #[pyproto]
 impl PyObjectProtocol for Seq {
         fn __repr__(&self) -> PyResult<String> {
@@ -73,7 +75,7 @@ impl PyObjectProtocol for Seq {
 /// read_fasta(path)
 /// 
 /// Reads a fasta file into a list of one or more Seq objects.
-fn read_fasta(path: &str) -> Vec<Seq> {
+pub fn read_fasta(path: &str) -> Vec<Seq> {
     // Open path in read-only mode
     // Returns io::Result<File>
     let mut file = match File::open(path) {
@@ -134,7 +136,7 @@ fn read_fasta(path: &str) -> Vec<Seq> {
 /// write_fastq(sequences, path, linewidth)
 /// 
 /// Writes a fasta file given a list of Seq objects.
-fn write_fastq(sequences: Vec<&Seq>, path: &str, linewidth: i32) -> i32 {
+pub fn write_fastq(sequences: Vec<&Seq>, path: &str, linewidth: i32) -> i32 {
     let mut file = match File::create(path) {
         Ok(file) => file,
         Err(x) => panic!("couldn't create {}: {}", path, x),
