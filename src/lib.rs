@@ -419,42 +419,6 @@ fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Vec<us
     (new_seq, new_block_list)
 }
 
-// // Wraps array_to_blocks in order to be exportable
-// fn py_array_to_blocks(_py: Python, range_list: Vec<i32>) -> PyResult<Vec<Block>> {
-//     let out = array_to_blocks(range_list);
-//     Ok(out)
-// }
-
-// // Wraps blocks_to_array in order to be exportable
-// fn py_blocks_to_array(_py: Python, block_list: Vec<Block>) -> PyResult<Vec<i32>> {
-//     let out = blocks_to_array(block_list);
-//     Ok(out)
-// }
-
-// // Wraps pairwise_to_blocks in order to be exportable
-// fn py_pairwise_to_blocks(_py: Python, ref_seq: &str, other_seq: &str, debug: bool) -> PyResult<Vec<Block>> {
-//     let out = pairwise_to_blocks(ref_seq, other_seq, debug);
-//     Ok(out)
-// }
-
-// // Wraps remove_sites in order to be exportable
-// fn py_remove_sites(_py: Python, seq: &str, block_list: Vec<Block>, remove_pos_list: Vec<usize>, gap_char: &str) -> PyResult<(String, Vec<Block>)> {
-//     let out = remove_sites(seq, block_list, remove_pos_list, gap_char);
-//     Ok(out)
-// }
-
-// py_module_initializer!(blockcodec, initblockcodec, PyInit_blockcodec, |py, m| { 
-//     m.add_function(py, "array_to_blocks", py_fn!(py, 
-//         py_array_to_blocks(range_list: Vec<i32>)))?;
-//     m.add_function(py, "blocks_to_array", py_fn!(py, 
-//         py_blocks_to_array(block_list: Vec<Block>)))?;
-//     m.add_function(py, "pairwise_to_blocks", py_fn!(py, 
-//         py_pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool)))?;
-//     m.add_function(py, "remove_sites", py_fn!(py, 
-//         py_remove_sites(seq: &str, block_list: Vec<Block>, remove_pos_list: Vec<usize>, gap_char: &str)))?;
-//     Ok(())
-// });
-
 #[pymodinit]
 fn blockcodec(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_function!(array_to_blocks)).unwrap();
@@ -468,19 +432,10 @@ fn blockcodec(_py: Python, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
-// #[pymodinit]
-// fn blockcodec(py: Python, m: &PyModule) -> PyResult<()> {
-//     fn array_to_blocks_py(_py: Python, range_list: Vec<i32>) -> PyResult<Vec<Block>> {
-//         Ok(array_to_blocks(range_list))
-//     };
-
-//     Ok(())
+// #[cfg(test)]
+// mod tests {
+//     #[test]
+//     fn it_works() {
+//         assert_eq!(2 + 2, 4);
+//     }
 // }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
