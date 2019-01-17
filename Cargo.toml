@@ -1,11 +1,11 @@
 [package]
-name = "blockcodec"
+name = "evogen"
 version = "0.1.0"
 authors = ["Kent Kawashima <kentkawashima@gmail.com>"]
 edition = "2018"
 
 [lib]
-name = "blockcodec"
+name = "evogen"
 crate-type = ["cdylib"]
 
 [dependencies.pyo3]
