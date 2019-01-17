@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use pyo3::PyObjectProtocol;
 
 use std::str;
 use std::io::Write;
@@ -37,6 +38,17 @@ impl Block {
 impl Block {
     fn new(start: i32, stop: i32) -> Block {
         Block { start, stop }
+    }
+}
+
+#[pyproto]
+impl PyObjectProtocol for Block {
+    fn __repr__(&self) -> PyResult<String> {
+        Ok(format!("Block({start}, {stop})", start=self.start, stop=self.stop))
+    }
+
+    fn __str__(&self) -> PyResult<String> {
+        self.__repr__()
     }
 }
 
