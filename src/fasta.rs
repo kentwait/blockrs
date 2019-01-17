@@ -32,17 +32,6 @@ impl Seq {
             Seq::new(id, description, sequence)
         })
     }
-
-    fn __repr__(&self) -> PyResult<String> {
-        Ok(format!(">{id} {desc}\n{seq}", 
-                  id=self.id, 
-                  desc=self.description,
-                  seq=self.sequence))
-    }
-
-    fn __str__(&self) -> PyResult<String> {
-        self.__repr__()
-    }
 }
 
 impl Seq {
@@ -58,15 +47,23 @@ impl Seq {
 
 #[pyproto]
 impl PyObjectProtocol for Seq {
-    fn __repr__(&self) -> PyResult<String> {
-        Ok(format!(">{id} {desc}\n{seq}", 
+        fn __repr__(&self) -> PyResult<String> {
+        Ok(format!("Seq(id=\"{id}\", description=\"{desc}\", sequence=\"{seq}\")", 
                   id=self.id, 
                   desc=self.description,
                   seq=self.sequence))
     }
 
     fn __str__(&self) -> PyResult<String> {
-        self.__repr__()
+        match self.description.len() {
+            0 => Ok(format!(">{id}\n{seq}", 
+                  id=self.id, 
+                  seq=self.sequence)),
+            _ => Ok(format!(">{id} {desc}\n{seq}", 
+                  id=self.id, 
+                  desc=self.description,
+                  seq=self.sequence))
+        }
     }
 }
 
