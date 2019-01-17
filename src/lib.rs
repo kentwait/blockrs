@@ -9,14 +9,29 @@ use std::str;
 use std::io::Write;
 
 #[pyclass]
-struct Block {
+/// Block(start, stop)
+/// 
+/// Block represents an interval of positions from a given start position
+/// until the stop position, exclusive.
+/// 
+/// For example, Block(0, 3) represents the range [0, 1, 2].
+/// If the start value is >= 0, the stop value must be greater than the start.
+/// 
+/// For negative values, Block(-1, -4) represents the range [-1, -2, -3].
+/// If the start value is < 0, the stop value must also be < 0 and less than the start.
+pub struct Block {
+
+    #[prop(get, set)]
     start: i32,
+
+    #[prop(get, set)]
     stop: i32,
 }
 
 #[pymethods]
 impl Block {
     #[new]
+    /// Creates a new Block object from start and stop values.
     fn __new__(obj: &PyRawObject, start: i32, stop: i32) -> PyResult<()> {
         obj.init(|_| {
             Block { start, stop }
@@ -31,6 +46,10 @@ impl Block {
 }
 
 #[pyfunction]
+/// array_to_blocks(range_list)
+/// 
+/// Converts an explicit list of positions into a list of blocks.
+/// Returns a list of Block objects.
 fn array_to_blocks(range_list: Vec<i32>) -> Vec<Block> {
     let mut block_list: Vec<Block> = Vec::new();
     let mut start: i32 = range_list[0];
@@ -73,7 +92,6 @@ fn array_to_blocks(range_list: Vec<i32>) -> Vec<Block> {
     block_list
 }
 
-#[pyfunction]
 fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<Block> {
     let mut block_list: Vec<Block> = Vec::new();
     let mut prev_item: Option<i32> = range_list[0];
@@ -149,10 +167,14 @@ fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<Block> {
 }
 
 #[pyfunction]
-fn blocks_to_array(block_list: Vec<Block>) -> Vec<i32> {
+/// blocks_to_array(block_list)
+/// 
+/// Converts a list of Block objects into an explicit listing of positions.
+/// Returns a list of integers.
+fn blocks_to_array(block_list: Vec<&Block>) -> Vec<i32> {
     let mut pos_array: Vec<i32> = Vec::new();
     for block in block_list {
-        let Block { start, stop } = block;
+        let Block { start, stop } = *block;
         if start <= stop {
             for i in start..stop {
                 pos_array.push(i);
@@ -169,6 +191,10 @@ fn blocks_to_array(block_list: Vec<Block>) -> Vec<i32> {
 }
 
 #[pyfunction]
+/// pairwise_to_blocks(ref_seq, other_seq, debug)
+/// 
+/// Applies the positions of ungapped sites in the reference sequence unto the target.
+/// Returns a list of Block objects
 fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<Block> {
     // Check if sequence lengths are the same
     // TODO: Change into an assert
@@ -352,7 +378,10 @@ fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<Block>
 }
 
 #[pyfunction]
-fn remove_sites(seq: &str, block_list: Vec<Block>, mut remove_pos_list:  Vec<usize>, gap_char: &str) -> (String, Vec<Block>) {
+/// remove_sites(seq, block_list, remove_pos_list, gap_char)
+/// 
+/// Removes parts of the sequence using a list of positions and updated associated block list.
+fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Vec<usize>, gap_char: &str) -> (String, Vec<Block>) {
     let gap_char = gap_char.chars().next().unwrap();
     // Unrolled blocks into positional array
     let block_array: Vec<i32> = blocks_to_array(block_list);
@@ -427,14 +456,26 @@ fn remove_sites(seq: &str, block_list: Vec<Block>, mut remove_pos_list:  Vec<usi
 // });
 
 #[pymodinit]
-fn blockcodec(py: Python, m: &PyModule) -> PyResult<()> {
+fn blockcodec(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_function!(array_to_blocks)).unwrap();
     m.add_function(wrap_function!(blocks_to_array)).unwrap();
     m.add_function(wrap_function!(pairwise_to_blocks)).unwrap();
     m.add_function(wrap_function!(remove_sites)).unwrap();
 
+    // Add Block class
+    m.add_class::<Block>()?;
+
     Ok(())
 }
+
+// #[pymodinit]
+// fn blockcodec(py: Python, m: &PyModule) -> PyResult<()> {
+//     fn array_to_blocks_py(_py: Python, range_list: Vec<i32>) -> PyResult<Vec<Block>> {
+//         Ok(array_to_blocks(range_list))
+//     };
+
+//     Ok(())
+// }
 
 #[cfg(test)]
 mod tests {
