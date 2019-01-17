@@ -50,7 +50,7 @@ impl PyObjectProtocol for Block {
     }
 
     fn __str__(&self) -> PyResult<String> {
-        self.__repr__()
+        Ok(format!("{start}:{stop}", start=self.start, stop=self.stop))
     }
 }
 
