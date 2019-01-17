@@ -104,6 +104,7 @@ pub fn read_fasta(path: &str) -> Vec<Seq> {
 
                 // Clear contents
                 sequence.clear();
+                desc = "";
             }
             // Process the ID line
             // Separate the ID field from the description field
