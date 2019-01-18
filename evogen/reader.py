@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 from evogen.block import combine_exon_blocks
 from evogen.utils import summarize_ancestral_prob_df
-
+from evogen_rust import fasta
 
 def fasta_file_to_dict(path, description_parser=None):
     """Reads a FASTA formatted text file into an ordered dictionary.
@@ -77,6 +77,8 @@ def fasta_file_to_dict(path, description_parser=None):
                                    list(description_parser(description).items()))
     return seq_d
 
+def fasta_file_to_seq(path):
+    return OrderedDict(((seq.id, seq) for seq in fasta.read_fasta(path)))
 
 def fasta_dir_to_dict(dirpath, suffix='.aln',
                       expected_count=None, filename_parser=None,
@@ -142,6 +144,36 @@ def fasta_dir_to_dict(dirpath, suffix='.aln',
                            )
     return sequence_d
 
+def fasta_dir_to_seq(dirpath, suffix='.aln',
+                      expected_count=None, filename_parser=None,
+                      description_parser=None):
+    # Check if dirpath exists
+    if not os.path.exists(dirpath):
+        raise Exception('{} does not exist'.format(dirpath))
+    else:
+        if not os.path.isdir(dirpath):
+            raise Exception('{} is not a directory'.format(dirpath))
+
+    cnt = 0
+    sequence_d = {}
+    for fname in os.listdir(dirpath):
+        if not fname.endswith(suffix):
+            continue
+
+        key = filename_parser(fname) if filename_parser else fname
+        if key in sequence_d.keys():
+            raise KeyError('{} already exists'.format(key))
+        sequence_d[key] = fasta_file_to_seq(os.path.join(dirpath, fname))
+
+        cnt += 1
+
+    if expected_count is not None:
+        if expected_count != cnt:
+            raise Exception('expected {} items, instead '
+                            'processed {} file'.format(expected_count, cnt) +
+                            's' if cnt != 1 else ''
+                           )
+    return sequence_d
 
 def blast_table_to_df(path, sep='\t',
                       col_labels=['qaccver', 'saccver', 'pident', 'length',

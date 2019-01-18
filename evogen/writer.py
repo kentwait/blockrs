@@ -5,6 +5,8 @@ import os
 import pickle
 import sqlite3 as sq
 
+from evogen_rust import fasta
+
 
 def dict_to_fasta_file(fasta_d, path, line_width=None, description_parser=None,
                        use_key=True):
@@ -64,6 +66,10 @@ def dict_to_fasta_file(fasta_d, path, line_width=None, description_parser=None,
             cnt += 1
     return cnt
 
+def seq_to_fasta_file(fasta_d, path, line_width=None):
+    if line_width == None:
+        line_width = -1
+    return fasta.write_fasta(list(fasta_d.values()), path, line_width)
 
 def dict_to_fasta_dir(fasta_dir_d, dirpath, suffix='.aln',
                       filename_parser=None, description_parser=None,
@@ -148,6 +154,23 @@ def pickle_fasta_dir_dict(description, fasta_d, path, usage=None, **kwargs):
     with open(path, 'wb') as f:  # pylint: disable=invalid-name
         pickle.dump(packaged_d, f)
 
+def seq_to_fasta_dir(fasta_dir_d, dirpath, suffix='.aln',
+                      filename_parser=None,
+                      line_width=None, verbose=False):
+    # Check if dirpath exists
+    if not os.path.exists(dirpath):
+        os.makedirs(dirpath)
+    cnt = 0
+    for k, seq_d in fasta_dir_d.items():
+        fname = str(k) + suffix
+        if filename_parser:
+            fname = filename_parser(k)
+        path = os.path.join(dirpath, fname)
+        c = seq_to_fasta_file(seq_d, path, line_width=line_width)
+        if verbose:
+            print(path, c)
+        cnt += 1
+    return cnt
 
 def dataframe_to_sqlite(df, db_path, table_name, create_table_sql,
                         drop_is_exists=False):
