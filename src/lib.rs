@@ -4,7 +4,6 @@
 extern crate pyo3;
 
 pub mod block;
-pub mod fasta;
 
 // #[cfg(test)]
 // mod tests {
