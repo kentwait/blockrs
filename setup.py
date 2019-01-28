@@ -52,7 +52,7 @@ def main():
     setup(
         name='evogen',
         # version=expand_version(version),
-        version='0.1.0',
+        version='0.2.0',
         # author=author,
         # author_email='kentkawashima@gmail.com',
         # description=description,

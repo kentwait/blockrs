@@ -1,11 +1,11 @@
 [package]
-name = "evogen"
-version = "0.1.0"
+name = "blockrs"
+version = "0.2.0"
 authors = ["Kent Kawashima <kentkawashima@gmail.com>"]
 edition = "2018"
 
 [lib]
-name = "evogen_rust"
+name = "libblockrs"
 crate-type = ["cdylib"]
 
 [dependencies.pyo3]
