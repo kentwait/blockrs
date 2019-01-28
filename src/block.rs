@@ -36,7 +36,7 @@ impl Block {
     }
 
     #[staticmethod]
-    fn parse_block_data(data_str: &str) -> PyResult<Vec<Block>> {
+    fn from_block_str(data_str: &str) -> PyResult<Vec<Block>> {
         // Declare variables
         let mut block_list: Vec<Block> = Vec::new();
 
@@ -70,6 +70,16 @@ impl Block {
         }
         // Returns block_list
         Ok(block_list)
+    }
+
+    #[staticmethod]
+    fn to_block_str(block_list: Vec<&Block>) -> PyResult<String> {
+        let mut block_str_vec: Vec<String> = Vec::new();
+        for block in block_list {
+            let substr = format!("{}:{}", block.start, block.stop);
+            block_str_vec.push(substr);
+        }
+        Ok(block_str_vec.join(";"))
     }
 }
 
