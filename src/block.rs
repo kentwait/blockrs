@@ -5,6 +5,7 @@ use std::str;
 use std::io::Write;
 
 #[pyclass]
+#[derive(Copy, Clone)]
 /// Block(start, stop)
 /// 
 /// Block represents an interval of positions from a given start position
@@ -389,7 +390,18 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<Bl
 /// remove_sites(seq, block_list, remove_pos_list, gap_char)
 /// 
 /// Removes parts of the sequence using a list of positions and updated associated block list.
+// TODO: Deal with empty result. I think this is panicking due to calling to option_array_to_blocks
 pub fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Vec<usize>, gap_char: &str) -> (String, Vec<Block>) {
+    // Check if remove_pos_list is empty
+    if remove_pos_list.len() == 0 {
+        let mut same_block_list: Vec<Block> = Vec::new();
+        for block in block_list {
+            let block = block.clone();
+            same_block_list.push(block);
+        }
+        return (seq.to_string(), same_block_list)
+    }
+
     let gap_char = gap_char.chars().next().unwrap();
     // Unrolled blocks into positional array
     let block_array: Vec<i32> = blocks_to_array(block_list);
@@ -416,6 +428,13 @@ pub fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Ve
     for i in remove_pos_list {
         abs_pos_array.remove(i);
         new_seq_array.remove(i);
+    }
+    
+    // Check if result is empty
+    if new_seq_array.len() == 0 {
+        let empty_string = String::new();
+        let empty_vec: Vec<Block> = Vec::new();
+        return (empty_string, empty_vec)
     }
 
     // Reconstruct string
