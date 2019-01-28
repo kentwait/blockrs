@@ -34,6 +34,43 @@ impl Block {
             Block { start, stop }
         })
     }
+
+    #[staticmethod]
+    fn parse_block_data(data_str: &str) -> PyResult<Vec<Block>> {
+        // Declare variables
+        let mut block_list: Vec<Block> = Vec::new();
+
+        // Split str at '_' and get last substr
+        let sep_idx = data_str.rfind('_').unwrap();
+        let (_, coords_str) = data_str.split_at(sep_idx);
+        let coords_str = coords_str.trim_start_matches('_');
+
+        // Split substr by ';'
+        // For each split
+        for start_stop in coords_str.split(';').collect::<Vec<&str>>() {
+            // split again by ':' and convert to int
+            let sep_idx = start_stop.rfind(':').unwrap();
+            let (start, stop) = start_stop.split_at(sep_idx);
+            println!("start: {:?}, end: {:?}", start, stop);
+            let start = match start.parse::<i32>() {
+                Ok(i) => i,
+                Err(error) => {
+                    panic!("Error converting start from &str to i32: {:?}", error)
+                },
+            };
+            let stop = match stop.trim_start_matches(':').parse::<i32>() {
+                Ok(i) => i,
+                Err(error) => {
+                    panic!("Error converting stop from &str to i32: {:?}", error)
+                },
+            };
+            // Create block and push to blocklist
+            let block = Block::new(start, stop);
+            block_list.push(block)
+        }
+        // Returns block_list
+        Ok(block_list)
+    }
 }
 
 // Block::new method for Rust
