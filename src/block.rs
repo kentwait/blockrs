@@ -61,12 +61,17 @@ impl PyObjectProtocol for Block {
 /// Converts an explicit list of positions into a list of blocks.
 /// Returns a list of Block objects.
 pub fn array_to_blocks(range_list: Vec<i32>) -> Vec<Block> {
+    // Declare variables
     let mut block_list: Vec<Block> = Vec::new();
     let mut start: i32 = range_list[0];
-    let mut prev: i32 = range_list[0];
+    let mut prev: i32 = range_list[0];  // prev is the first value
 
+    // Iterate over a list of positions skipping the first one
+    // current is &i32
     for current in range_list.iter().skip(1) {
+        // Shadows current, assigns concrete value of current
         let current: i32 = *current;
+        // Checks current value and current relative to prev
         if (prev >= 0) & (current >= 0) {
             if prev + 1 != current {
                 let block = Block::new(start, prev + 1);
@@ -88,9 +93,12 @@ pub fn array_to_blocks(range_list: Vec<i32>) -> Vec<Block> {
             block_list.push(block);
             start = current;
         }
+        // prev gets the value of current
         prev = current;
     }
 
+    // End of the array
+    // push last remaining block
     if prev >= 0 {
         let block = Block::new(start, prev + 1);
         block_list.push(block);
@@ -99,24 +107,31 @@ pub fn array_to_blocks(range_list: Vec<i32>) -> Vec<Block> {
         block_list.push(block);
     }
 
+    // Returns block_list
     block_list
 }
 
+/// Converts an explicit list of Option into a list of blocks.
+/// Returns a list of Block objects.
 fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<Block> {
+    // Declare variables
     let mut block_list: Vec<Block> = Vec::new();
-    let mut prev_item: Option<i32> = range_list[0];
-
+    let mut prev_item: Option<i32> = range_list[0];  // option instead of i32
     let mut start: i32 = -1e9 as i32;
 
+    // Iterate over pairs of prev (a) and currrent (b) positions
+    // such that if range_list is [0, 1, 2, 3, 5, 6, 7] the the zipped list is
+    // [(0, 1), (1, 2), (2, 3), (3, 5), (5, 6), (6, 7), (7, None)]
     for (a, b) in range_list.iter().zip(range_list.iter().skip(1)) {
-        // Check if prev has a value or not
+        // Check if prev (a) has a value or not by destructuring
         if let Some(u) = a {
-            let prev = *u;
+            let prev = *u;  // assign to prev is value is present
             if start == -1e9 as i32 {
-                start = prev;
+                start = prev;  // assign prev as start
             }
+            // Check if prev (a) has a value or not by destructuring
             if let Some(v) = b {
-                // prev and current have values
+                // Reaching this point means  prev and current have values
                 let current = *v;
                 if (prev >= 0) && (current >= 0) {
                     if prev + 1 != current {
@@ -140,7 +155,7 @@ fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<Block> {
                     start = current;
                 }
             } else {
-                // prev has value, current is None
+                // prev (a) has value, but current (b) is None
                 if prev >= 0 {
                     let block = Block::new(start, prev + 1);
                     block_list.push(block);
@@ -152,11 +167,13 @@ fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<Block> {
                 }
             }
         } else {
+            // prev (a) has no value, check current (b)
             if let Some(v) = b {
-                // prev is None, current has a value
+                // assign to start if prev has no value but current has
                 start = *v;
             }
         }
+        // current becomes prev_item
         prev_item = *b;
     }
 
@@ -181,21 +198,29 @@ fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<Block> {
 /// Converts a list of Block objects into an explicit listing of positions.
 /// Returns a list of integers.
 pub fn blocks_to_array(block_list: Vec<&Block>) -> Vec<i32> {
+    // Declare variables
     let mut pos_array: Vec<i32> = Vec::new();
+    // Iterate over list of Block
     for block in block_list {
+        // Object destructure to get start and stop values
         let Block { start, stop } = *block;
+        // start less than stop means both are positive
         if start <= stop {
             for i in start..stop {
                 pos_array.push(i);
             }
+        // start is larger than stop, probably means -1, -N
         } else {
             let start = start + 1;
             let stop = stop + 1;
+            // Iterate in reverse like range(..,..,-1) in Python
+            // This will go from -1, -2, ... , -N for example
             for i in (stop..start).rev() {
                 pos_array.push(i);
             }
         }
     }
+    // Return position array
     pos_array
 }
 
@@ -243,9 +268,11 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<Bl
         }
         gap_cnt += 1;
     }
+    // Zip ref_seq and other_seq chars, both skipping the first character
+    // ref_seq char is a, other_seq char is b
     for (a, b) in ref_seq.chars().skip(1).zip(other_seq.chars().skip(1)) {
-        if a != gap_char && b != gap_char {
         // Current site are both filled.
+        if a != gap_char && b != gap_char {
             if gap_cnt == 0 && {prev_ref != gap_char && prev_seq != gap_char} {
                 if debug == true {
                     print!("| {} ", seq_cnt);
@@ -271,9 +298,9 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<Bl
             }
             seq_cnt += 1;
 
-        } else if a != gap_char && b == gap_char {
         // Current site is filled in the reference and
         // gapped in the other sequence.
+        } else if a != gap_char && b == gap_char {
             if gap_cnt == 0 && {prev_ref != gap_char && prev_seq != gap_char} {
                 if debug == true {
                     print!("| {} ", seq_cnt);
@@ -298,8 +325,8 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<Bl
             }
             seq_cnt += 1;
 
-        } else if a == gap_char && b == gap_char {
         // Current site is gapped for both.
+        } else if a == gap_char && b == gap_char {
             if gap_cnt == 0 && {prev_ref != gap_char && prev_seq != gap_char} {
                 if debug == true {
                     print!("| {} ", seq_cnt);
@@ -321,10 +348,11 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<Bl
                 let block = Block::new(-1, -1 - gap_cnt);
                 block_list.push(block);
                 gap_cnt = 0;
-            }
-        } else if a == gap_char && b != gap_char {
+            }        
+        
         // Current site is gapped in the reference and
         // filled in the other sequence.
+        } else if a == gap_char && b != gap_char {
             if gap_cnt == 0 && {prev_ref != gap_char && prev_seq != gap_char} {
                 if debug == true {
                     print!("| {} ", seq_cnt);
@@ -352,7 +380,8 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<Bl
         prev_ref = a;
         prev_seq = b;
     }
-
+    // Pairwise alignment is finished
+    // Handle last block
     if gap_cnt > 0 {
         if debug == true {
             print!("- {}", seq_cnt);
@@ -401,12 +430,10 @@ pub fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Ve
         }
         return (seq.to_string(), same_block_list)
     }
-
+    // Declare variables
     let gap_char = gap_char.chars().next().unwrap();
-    // Unrolled blocks into positional array
+    // Unrolls blocks into positional array
     let block_array: Vec<i32> = blocks_to_array(block_list);
-
-    // Create
     // absolute position array (block)
     let mut abs_pos_array: Vec<Option<i32>> = Vec::new();
 
@@ -421,7 +448,6 @@ pub fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Ve
             abs_pos_array.push(None);
         }
     }
-
     // Remove positions
     remove_pos_list.sort_unstable();
     remove_pos_list.reverse();
@@ -429,23 +455,21 @@ pub fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Ve
         abs_pos_array.remove(i);
         new_seq_array.remove(i);
     }
-    
     // Check if result is empty
     if new_seq_array.len() == 0 {
         let empty_string = String::new();
         let empty_vec: Vec<Block> = Vec::new();
         return (empty_string, empty_vec)
     }
-
     // Reconstruct string
     let new_seq: String = new_seq_array.iter().collect();
-    
     // Reconstruct blocks
     let new_block_list = option_array_to_blocks(abs_pos_array);
-
+    // Return new_seq and new_block_list
     (new_seq, new_block_list)
 }
 
+// Register python functions to PyO3
 #[pymodinit]
 fn block(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_function!(array_to_blocks)).unwrap();
