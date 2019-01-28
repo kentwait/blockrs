@@ -2,9 +2,9 @@
 """Functions to create and modify block data.
 """
 import numpy as np
-from evogen import block_
+from blockrs import libblock
 
-def array_to_blocks(range_list):
+def array_to_blocks(range_list, debug=False):
     """Converts an explicit list of positions into a list of blocks.
 
     Parameters
@@ -26,10 +26,10 @@ def array_to_blocks(range_list):
     [slice(0, 2, None), slice(-1, -3, None), slice(5, 8, None)]
 
     """
-    return block_.array_to_blocks(range_list)
+    return libblock.array_to_blocks(range_list)
 
 
-def blocks_to_array(block_list):
+def blocks_to_array(block_list, debug=False):
     """Converts a list of blocks (slices) into an explicit
     listing of positions.
 
@@ -42,7 +42,7 @@ def blocks_to_array(block_list):
     numpy.array
 
     """
-    pos_array = block_.blocks_to_array(block_list)
+    pos_array = libblock.blocks_to_array(block_list)
     return np.array(pos_array, dtype=np.int32)
 
 
@@ -205,10 +205,10 @@ def pairwise_to_blocks(ref_seq, other_seq, gapchar='-', debug=False):
 
     """
     assert len(ref_seq) == len(other_seq), 'sequence lengths are not the same'
-    return block_.pairwise_to_blocks(ref_seq, other_seq, debug)
+    return libblock.pairwise_to_blocks(ref_seq, other_seq, gapchar, debug)
 
 
-def remove_sites(seq, block_list, removed_pos_list, zero_indexed=True):
+def remove_sites(seq, block_list, removed_pos_list, gap_char="-", debug=False):
     """Removes parts of the sequence using a list of positions and
     updated associated block list.
 
@@ -235,8 +235,7 @@ def remove_sites(seq, block_list, removed_pos_list, zero_indexed=True):
         Returns a tuple of the sequence and the block list.
 
     """
-    gap_char = "-"
-    return block_.remove_sites(seq, block_list, removed_pos_list, gap_char)
+    return libblock.remove_sites(seq, block_list, removed_pos_list, gap_char)
 
 
 # Combine exon block lists to get UTR exon blocks
