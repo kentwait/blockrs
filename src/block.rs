@@ -229,7 +229,7 @@ pub fn blocks_to_array(block_list: Vec<&Block>) -> Vec<i32> {
 /// 
 /// Applies the positions of ungapped sites in the reference sequence unto the target.
 /// Returns a list of Block objects
-pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<Block> {
+pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, gap_char: &str, debug: bool) -> Vec<Block> {
     // Check if sequence lengths are the same
     // TODO: Change into an assert
     if ref_seq.len() != other_seq.len() {
@@ -245,7 +245,7 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, debug: bool) -> Vec<Bl
     let mut start: i32 = 0;
     let mut prev_ref: char = ref_seq.chars().next().unwrap();
     let mut prev_seq: char = other_seq.chars().next().unwrap();
-    let gap_char: char = '-';
+    let gap_char = gap_char.chars().next().unwrap();
 
     // Handle first column
     if prev_ref != gap_char && prev_seq != gap_char {
