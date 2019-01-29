@@ -30,6 +30,9 @@ impl Block {
     #[new]
     /// Creates a new Block object from start and stop values.
     fn __new__(obj: &PyRawObject, start: i32, stop: i32) -> PyResult<()> {
+        if stop < start {
+            return Err(exceptions::ValueError::py_err("stop cannot be less than start"))
+        }
         obj.init(|_| {
             Block { start, stop }
         })
@@ -37,55 +40,12 @@ impl Block {
 
     #[staticmethod]
     fn from_block_str(data_str: &str) -> PyResult<Vec<Block>> {
-        // Declare variables
-        let mut block_list: Vec<Block> = Vec::new();
-
-        // // Check if '_' exists
-        // // Split str at '_' and get last substr
-        // let coords_str = match data_str.rfind('_') {
-        //     Some(i) => {
-        //         let (_, string) = data_str.split_at(i);
-        //         string.trim_start_matches('_')
-        //     },
-        //     None => data_str
-        // };
-        let coords_str = data_str;
-
-        // TODO: Use regexp to check if coords_str is ^(\d+\:\d+\;*)+$
-
-        // Split substr by ';'
-        // For each split
-        for start_stop in coords_str.split(';').collect::<Vec<&str>>() {
-            // split again by ':' and convert to int
-            let sep_idx = match start_stop.rfind(':') {
-                Some(x) => x,
-                None => return Err(exceptions::ValueError::py_err("separator \":\" not found"))
-            };
-            let (start, stop) = start_stop.split_at(sep_idx);
-            let start = match start.parse::<i32>() {
-                Ok(i) => i,
-                Err(error) => return Err(exceptions::ValueError::py_err(format!("cannot convert start value from &str to i32: {:?} ", error))),
-            };
-            let stop = match stop.trim_start_matches(':').parse::<i32>() {
-                Ok(i) => i,
-                Err(error) => return Err(exceptions::ValueError::py_err(format!("cannot convert end value from &str to i32: {:?} ", error))),
-            };
-            // Create block and push to blocklist
-            let block = Block::new(start, stop);
-            block_list.push(block)
-        }
-        // Returns block_list
-        Ok(block_list)
+        from_block_str(data_str)
     }
 
     #[staticmethod]
     fn to_block_str(block_list: Vec<&Block>) -> PyResult<String> {
-        let mut block_str_vec: Vec<String> = Vec::new();
-        for block in block_list {
-            let substr = format!("{}:{}", block.start, block.stop);
-            block_str_vec.push(substr);
-        }
-        Ok(block_str_vec.join(";"))
+        to_block_str(block_list)
     }
 }
 
@@ -93,6 +53,12 @@ impl Block {
 impl Block {
     pub fn new(start: i32, stop: i32) -> Block {
         Block { start, stop }
+    }
+    pub fn check_new(start: i32, stop: i32) -> Block {
+        if stop < start {
+            panic!("stop cannot be less than start")
+        }
+        Block::new(start, stop)
     }
 }
 
@@ -106,6 +72,65 @@ impl PyObjectProtocol for Block {
     fn __str__(&self) -> PyResult<String> {
         Ok(format!("{start}:{stop}", start=self.start, stop=self.stop))
     }
+}
+
+#[pyfunction]
+/// from_block_str(data_str)
+/// 
+/// Converts a block string into a list of Blocks.
+fn from_block_str(data_str: &str) -> PyResult<Vec<Block>> {
+    // Declare variables
+    let mut block_list: Vec<Block> = Vec::new();
+
+    // // Check if '_' exists
+    // // Split str at '_' and get last substr
+    // let coords_str = match data_str.rfind('_') {
+    //     Some(i) => {
+    //         let (_, string) = data_str.split_at(i);
+    //         string.trim_start_matches('_')
+    //     },
+    //     None => data_str
+    // };
+    let coords_str = data_str;
+
+    // TODO: Use regexp to check if coords_str is ^(\d+\:\d+\;*)+$
+
+    // Split substr by ';'
+    // For each split
+    for start_stop in coords_str.split(';').collect::<Vec<&str>>() {
+        // split again by ':' and convert to int
+        let sep_idx = match start_stop.rfind(':') {
+            Some(x) => x,
+            None => return Err(exceptions::ValueError::py_err("separator \":\" not found"))
+        };
+        let (start, stop) = start_stop.split_at(sep_idx);
+        let start = match start.parse::<i32>() {
+            Ok(i) => i,
+            Err(error) => return Err(exceptions::ValueError::py_err(format!("cannot convert start value from &str to i32: {:?} ", error))),
+        };
+        let stop = match stop.trim_start_matches(':').parse::<i32>() {
+            Ok(i) => i,
+            Err(error) => return Err(exceptions::ValueError::py_err(format!("cannot convert end value from &str to i32: {:?} ", error))),
+        };
+        // Create block and push to blocklist
+        let block = Block::new(start, stop);
+        block_list.push(block)
+    }
+    // Returns block_list
+    Ok(block_list)
+}
+
+#[pyfunction]
+/// to_block_str(block_list)
+/// 
+/// Converts a list of Blocks into a block string.
+fn to_block_str(block_list: Vec<&Block>) -> PyResult<String> {
+    let mut block_str_vec: Vec<String> = Vec::new();
+    for block in block_list {
+        let substr = format!("{}:{}", block.start, block.stop);
+        block_str_vec.push(substr);
+    }
+    Ok(block_str_vec.join(";"))
 }
 
 #[pyfunction]
@@ -528,10 +553,12 @@ pub fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Ve
 // Register python functions to PyO3
 #[pymodinit]
 fn block(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_function!(array_to_blocks)).unwrap();
-    m.add_function(wrap_function!(blocks_to_array)).unwrap();
-    m.add_function(wrap_function!(pairwise_to_blocks)).unwrap();
-    m.add_function(wrap_function!(remove_sites)).unwrap();
+    m.add_function(wrap_function!(from_block_str))?;
+    m.add_function(wrap_function!(to_block_str))?;
+    m.add_function(wrap_function!(array_to_blocks))?;
+    m.add_function(wrap_function!(blocks_to_array))?;
+    m.add_function(wrap_function!(pairwise_to_blocks))?;
+    m.add_function(wrap_function!(remove_sites))?;
 
     // Add Block class
     m.add_class::<Block>()?;
