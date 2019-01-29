@@ -40,15 +40,16 @@ impl Block {
         // Declare variables
         let mut block_list: Vec<Block> = Vec::new();
 
-        // Check if '_' exists
-        // Split str at '_' and get last substr
-        let coords_str = match data_str.rfind('_') {
-            Some(i) => {
-                let (_, string) = data_str.split_at(i);
-                string.trim_start_matches('_')
-            },
-            None => data_str
-        };
+        // // Check if '_' exists
+        // // Split str at '_' and get last substr
+        // let coords_str = match data_str.rfind('_') {
+        //     Some(i) => {
+        //         let (_, string) = data_str.split_at(i);
+        //         string.trim_start_matches('_')
+        //     },
+        //     None => data_str
+        // };
+        let coords_str = data_str;
 
         // TODO: Use regexp to check if coords_str is ^(\d+\:\d+\;*)+$
 
@@ -112,7 +113,7 @@ impl PyObjectProtocol for Block {
 /// 
 /// Converts an explicit list of positions into a list of blocks.
 /// Returns a list of Block objects.
-pub fn array_to_blocks(range_list: Vec<i32>) -> Vec<Block> {
+pub fn array_to_blocks(range_list: Vec<i32>) -> PyResult<Vec<Block>> {
     // Declare variables
     let mut block_list: Vec<Block> = Vec::new();
     let mut start: i32 = range_list[0];
@@ -160,7 +161,7 @@ pub fn array_to_blocks(range_list: Vec<i32>) -> Vec<Block> {
     }
 
     // Returns block_list
-    block_list
+    Ok(block_list)
 }
 
 /// Converts an explicit list of Option into a list of blocks.
@@ -249,7 +250,7 @@ fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<Block> {
 /// 
 /// Converts a list of Block objects into an explicit listing of positions.
 /// Returns a list of integers.
-pub fn blocks_to_array(block_list: Vec<&Block>) -> Vec<i32> {
+pub fn blocks_to_array(block_list: Vec<&Block>) -> PyResult<Vec<i32>> {
     // Declare variables
     let mut pos_array: Vec<i32> = Vec::new();
     // Iterate over list of Block
@@ -273,7 +274,7 @@ pub fn blocks_to_array(block_list: Vec<&Block>) -> Vec<i32> {
         }
     }
     // Return position array
-    pos_array
+    Ok(pos_array)
 }
 
 #[pyfunction]
@@ -281,11 +282,11 @@ pub fn blocks_to_array(block_list: Vec<&Block>) -> Vec<i32> {
 /// 
 /// Applies the positions of ungapped sites in the reference sequence unto the target.
 /// Returns a list of Block objects
-pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, gap_char: &str, debug: bool) -> Vec<Block> {
+pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, gap_char: &str, debug: bool) -> PyResult<Vec<Block>> {
     // Check if sequence lengths are the same
     // TODO: Change into an assert
     if ref_seq.len() != other_seq.len() {
-        println!("sequence lengths are not the same");
+        return Err(exceptions::ValueError::py_err("sequence lengths are not the same"))
     }
 
     // Declare variables
@@ -464,7 +465,7 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, gap_char: &str, debug:
     }
 
     // TODO: Convert block_list vector to array
-    block_list
+    Ok(block_list)
 }
 
 #[pyfunction]
@@ -472,7 +473,7 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, gap_char: &str, debug:
 /// 
 /// Removes parts of the sequence using a list of positions and updated associated block list.
 // TODO: Deal with empty result. I think this is panicking due to calling to option_array_to_blocks
-pub fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Vec<usize>, gap_char: &str) -> (String, Vec<Block>) {
+pub fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Vec<usize>, gap_char: &str) -> PyResult<(String, Vec<Block>)> {
     // Check if remove_pos_list is empty
     if remove_pos_list.len() == 0 {
         let mut same_block_list: Vec<Block> = Vec::new();
@@ -480,12 +481,15 @@ pub fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Ve
             let block = block.clone();
             same_block_list.push(block);
         }
-        return (seq.to_string(), same_block_list)
+        return Ok((seq.to_string(), same_block_list))
     }
     // Declare variables
     let gap_char = gap_char.chars().next().unwrap();
     // Unrolls blocks into positional array
-    let block_array: Vec<i32> = blocks_to_array(block_list);
+    let block_array: Vec<i32> = match blocks_to_array(block_list) {
+        Ok(x) => x,
+        Err(x) => return Err(x)
+    };
     // absolute position array (block)
     let mut abs_pos_array: Vec<Option<i32>> = Vec::new();
 
@@ -511,14 +515,14 @@ pub fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Ve
     if new_seq_array.len() == 0 {
         let empty_string = String::new();
         let empty_vec: Vec<Block> = Vec::new();
-        return (empty_string, empty_vec)
+        return Ok((empty_string, empty_vec))
     }
     // Reconstruct string
     let new_seq: String = new_seq_array.iter().collect();
     // Reconstruct blocks
     let new_block_list = option_array_to_blocks(abs_pos_array);
     // Return new_seq and new_block_list
-    (new_seq, new_block_list)
+    Ok((new_seq, new_block_list))
 }
 
 // Register python functions to PyO3
