@@ -1,14 +1,13 @@
 import setuptools
 from setuptools_rust import Binding, RustExtension
-from blockrs import __author__, __version__
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name='blockrs',
-    author=__author__,
-    version=__version__,
+    author='Kent Kawashima',
+    version='0.4.0',
     author_email='kentkawashima@gmail.com',
     description='Encode and decode alignment blocks',
     long_description=long_description,
@@ -24,6 +23,7 @@ setuptools.setup(
         RustExtension('libblockrs.block', 'Cargo.toml', binding=Binding.PyO3),
     ],
     packages=['blockrs'],
+    package_data={'libblockrs': ['lib/libblockrs/block.cpython-37m-darwin.so']},
     requires=[],
     zip_safe=False,  # Rust extensions are not zip safe, like C-extensions.
 )
