@@ -1,5 +1,5 @@
 use pyo3::prelude::*;
-use pyo3::PyObjectProtocol;
+use pyo3::{PyObjectProtocol, exceptions};
 
 use std::str;
 use std::io::Write;
@@ -40,29 +40,34 @@ impl Block {
         // Declare variables
         let mut block_list: Vec<Block> = Vec::new();
 
+        // Check if '_' exists
         // Split str at '_' and get last substr
-        let sep_idx = data_str.rfind('_').unwrap();
-        let (_, coords_str) = data_str.split_at(sep_idx);
-        let coords_str = coords_str.trim_start_matches('_');
+        let coords_str = match data_str.rfind('_') {
+            Some(i) => {
+                let (_, string) = data_str.split_at(i);
+                string.trim_start_matches('_')
+            },
+            None => data_str
+        };
+
+        // TODO: Use regexp to check if coords_str is ^(\d+\:\d+\;*)+$
 
         // Split substr by ';'
         // For each split
         for start_stop in coords_str.split(';').collect::<Vec<&str>>() {
             // split again by ':' and convert to int
-            let sep_idx = start_stop.rfind(':').unwrap();
+            let sep_idx = match start_stop.rfind(':') {
+                Some(x) => x,
+                None => return Err(exceptions::ValueError::py_err("separator \":\" not found"))
+            };
             let (start, stop) = start_stop.split_at(sep_idx);
-            println!("start: {:?}, end: {:?}", start, stop);
             let start = match start.parse::<i32>() {
                 Ok(i) => i,
-                Err(error) => {
-                    panic!("Error converting start from &str to i32: {:?}", error)
-                },
+                Err(error) => return Err(exceptions::ValueError::py_err(format!("cannot convert start value from &str to i32: {:?} ", error))),
             };
             let stop = match stop.trim_start_matches(':').parse::<i32>() {
                 Ok(i) => i,
-                Err(error) => {
-                    panic!("Error converting stop from &str to i32: {:?}", error)
-                },
+                Err(error) => return Err(exceptions::ValueError::py_err(format!("cannot convert end value from &str to i32: {:?} ", error))),
             };
             // Create block and push to blocklist
             let block = Block::new(start, stop);
