@@ -7,5 +7,5 @@ from libblockrs.block import Block
 from blockrs import block
 
 __author__ = "Kent Kawashima"
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __all__ = ["libblock", "block", "Block"]

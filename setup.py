@@ -1,13 +1,14 @@
 import setuptools
 from setuptools_rust import Binding, RustExtension
+from blockrs import __author__, __version__
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name='blockrs',
-    version='0.3.0.post3',
-    author='Kent Kawashima',
+    author=__author__,
+    version=__version__,
     author_email='kentkawashima@gmail.com',
     description='Encode and decode alignment blocks',
     long_description=long_description,
