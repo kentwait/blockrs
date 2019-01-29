@@ -54,11 +54,11 @@ impl Block {
     pub fn new(start: i32, stop: i32) -> Block {
         Block { start, stop }
     }
-    pub fn check_new(start: i32, stop: i32) -> Block {
+    pub fn check_new(start: i32, stop: i32) -> Result<Block, &'static str> {
         if stop < start {
-            panic!("stop cannot be less than start")
+            return Err("stop cannot be less than start")
         }
-        Block::new(start, stop)
+        Ok(Block::new(start, stop))
     }
 }
 
@@ -113,7 +113,10 @@ fn from_block_str(data_str: &str) -> PyResult<Vec<Block>> {
             Err(error) => return Err(exceptions::ValueError::py_err(format!("cannot convert end value from &str to i32: {:?} ", error))),
         };
         // Create block and push to blocklist
-        let block = Block::new(start, stop);
+        let block = match Block::check_new(start, stop) {
+            Ok(x) => x,
+            Err(x) => return Err(exceptions::ValueError::py_err(x)),
+        };
         block_list.push(block)
     }
     // Returns block_list
@@ -152,22 +155,34 @@ pub fn array_to_blocks(range_list: Vec<i32>) -> PyResult<Vec<Block>> {
         // Checks current value and current relative to prev
         if (prev >= 0) & (current >= 0) {
             if prev + 1 != current {
-                let block = Block::new(start, prev + 1);
+                let block = match Block::check_new(start, prev + 1) {
+                    Ok(x) => x,
+                    Err(x) => return Err(exceptions::ValueError::py_err(x)),
+                };
                 block_list.push(block);
                 start = current;
             }
         } else if (prev >= 0) & (current < 0) {
-            let block = Block::new(start, prev + 1);
+            let block = match Block::check_new(start, prev + 1) {
+                Ok(x) => x,
+                Err(x) => return Err(exceptions::ValueError::py_err(x)),
+            };
             block_list.push(block);
             start = current;
         } else if (prev < 0) & (current < 0) {
             if prev - 1 != current {
-                let block = Block::new(start, prev - 1);
+                let block = match Block::check_new(start, prev - 1) {
+                    Ok(x) => x,
+                    Err(x) => return Err(exceptions::ValueError::py_err(x)),
+                };
                 block_list.push(block);
                 start = current;
             }
         } else if (prev < 0) & (current >= 0) {
-            let block = Block::new(start, prev - 1);
+            let block = match Block::check_new(start, prev - 1) {
+                Ok(x) => x,
+                Err(x) => return Err(exceptions::ValueError::py_err(x)),
+            };
             block_list.push(block);
             start = current;
         }
@@ -178,10 +193,16 @@ pub fn array_to_blocks(range_list: Vec<i32>) -> PyResult<Vec<Block>> {
     // End of the array
     // push last remaining block
     if prev >= 0 {
-        let block = Block::new(start, prev + 1);
+        let block = match Block::check_new(start, prev + 1) {
+            Ok(x) => x,
+            Err(x) => return Err(exceptions::ValueError::py_err(x)),
+        };
         block_list.push(block);
     } else {
-        let block = Block::new(start, prev - 1);
+        let block = match Block::check_new(start, prev - 1) {
+            Ok(x) => x,
+            Err(x) => return Err(exceptions::ValueError::py_err(x)),
+        };
         block_list.push(block);
     }
 
@@ -191,7 +212,7 @@ pub fn array_to_blocks(range_list: Vec<i32>) -> PyResult<Vec<Block>> {
 
 /// Converts an explicit list of Option into a list of blocks.
 /// Returns a list of Block objects.
-fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<Block> {
+fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Result<Vec<Block>, &'static str> {
     // Declare variables
     let mut block_list: Vec<Block> = Vec::new();
     let mut prev_item: Option<i32> = range_list[0];  // option instead of i32
@@ -213,33 +234,51 @@ fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<Block> {
                 let current = *v;
                 if (prev >= 0) && (current >= 0) {
                     if prev + 1 != current {
-                        let block = Block::new(start, prev + 1);
+                        let block = match Block::check_new(start, prev + 1) {
+                            Ok(x) => x,
+                            Err(x) => return Err(x),
+                        };
                         block_list.push(block);
                         start = current;
                     }
                 } else if (prev >= 0) && (current < 0) {
-                    let block = Block::new(start, prev + 1);
+                    let block = match Block::check_new(start, prev + 1) {
+                        Ok(x) => x,
+                        Err(x) => return Err(x),
+                    };
                     block_list.push(block);
                     start = current;
                 } else if (prev < 0) && (current < 0) {
                     if prev - 1 != current {
-                        let block = Block::new(start, prev - 1);
+                        let block = match Block::check_new(start, prev - 1) {
+                            Ok(x) => x,
+                            Err(x) => return Err(x),
+                        };
                         block_list.push(block);
                         start = current;
                     }
                 } else if (prev < 0) && (current >= 0) {
-                    let block = Block::new(start, prev - 1);
+                    let block = match Block::check_new(start, prev - 1) {
+                        Ok(x) => x,
+                        Err(x) => return Err(x),
+                    };
                     block_list.push(block);
                     start = current;
                 }
             } else {
                 // prev (a) has value, but current (b) is None
                 if prev >= 0 {
-                    let block = Block::new(start, prev + 1);
+                    let block = match Block::check_new(start, prev + 1) {
+                        Ok(x) => x,
+                        Err(x) => return Err(x),
+                    };
                     block_list.push(block);
                     start = -1e9 as i32;
                 } else {
-                    let block = Block::new(start, prev - 1);
+                    let block = match Block::check_new(start, prev - 1) {
+                        Ok(x) => x,
+                        Err(x) => return Err(x),
+                    };
                     block_list.push(block);
                     start = -1e9 as i32;
                 }
@@ -259,15 +298,21 @@ fn option_array_to_blocks(range_list: Vec<Option<i32>>) -> Vec<Block> {
         // prev has a value
         let prev = u;
         if prev >= 0 {
-            let block = Block::new(start, prev + 1);
+            let block = match Block::check_new(start, prev + 1) {
+                Ok(x) => x,
+                Err(x) => return Err(x),
+            };
             block_list.push(block);
         } else {
-            let block = Block::new(start, prev - 1);
+            let block = match Block::check_new(start, prev - 1) {
+                Ok(x) => x,
+                Err(x) => return Err(x),
+            };
             block_list.push(block);
         }
     }
     
-    block_list
+    Ok(block_list)
 }
 
 #[pyfunction]
@@ -369,7 +414,10 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, gap_char: &str, debug:
                 if debug == true {
                     print!("- {} ", seq_cnt);
                 }
-                let block = Block::new(-1, -1 - gap_cnt);
+                let block = match Block::check_new(-1, -1 - gap_cnt) {
+                    Ok(x) => x,
+                    Err(x) => return Err(exceptions::ValueError::py_err(x)),
+                };
                 block_list.push(block);
                 gap_cnt = 0;
                 start = seq_cnt;
@@ -383,7 +431,10 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, gap_char: &str, debug:
                 if debug == true {
                     print!("| {} ", seq_cnt);
                 }
-                let block = Block::new(start, seq_cnt);
+                let block = match Block::check_new(start, seq_cnt) {
+                    Ok(x) => x,
+                    Err(x) => return Err(exceptions::ValueError::py_err(x)),
+                };
                 block_list.push(block);
             } else if gap_cnt == 0 && {prev_ref != gap_char && prev_seq == gap_char} {
                 if debug == true {
@@ -397,7 +448,10 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, gap_char: &str, debug:
                 if debug == true {
                     print!("- {} ", seq_cnt);
                 }
-                let block = Block::new(-1, -1 - gap_cnt);
+                let block = match Block::check_new(-1, -1 - gap_cnt) {
+                    Ok(x) => x,
+                    Err(x) => return Err(exceptions::ValueError::py_err(x)),
+                };
                 block_list.push(block);
                 gap_cnt = 0;
             }
@@ -409,7 +463,10 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, gap_char: &str, debug:
                 if debug == true {
                     print!("| {} ", seq_cnt);
                 }
-                let block = Block::new(start, seq_cnt);
+                let block = match Block::check_new(start, seq_cnt) {
+                    Ok(x) => x,
+                    Err(x) => return Err(exceptions::ValueError::py_err(x)),
+                };
                 block_list.push(block);
             } else if gap_cnt == 0 && {prev_ref != gap_char && prev_seq == gap_char} {
                 if debug == true {
@@ -423,7 +480,10 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, gap_char: &str, debug:
                 if debug == true {
                     print!("- {} ", seq_cnt);
                 }
-                let block = Block::new(-1, -1 - gap_cnt);
+                let block = match Block::check_new(-1, -1 - gap_cnt) {
+                    Ok(x) => x,
+                    Err(x) => return Err(exceptions::ValueError::py_err(x)),
+                };
                 block_list.push(block);
                 gap_cnt = 0;
             }        
@@ -435,7 +495,10 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, gap_char: &str, debug:
                 if debug == true {
                     print!("| {} ", seq_cnt);
                 }
-                let block = Block::new(start, seq_cnt);
+                let block = match Block::check_new(start, seq_cnt) {
+                    Ok(x) => x,
+                    Err(x) => return Err(exceptions::ValueError::py_err(x)),
+                };
                 block_list.push(block);
                 start = seq_cnt;
             } else if gap_cnt == 0 && {prev_ref != gap_char && prev_seq == gap_char} {
@@ -464,14 +527,20 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, gap_char: &str, debug:
         if debug == true {
             print!("- {}", seq_cnt);
         }
-        let block = Block::new(-1, -1 - gap_cnt);
+        let block = match Block::check_new(-1, -1 - gap_cnt) {
+            Ok(x) => x,
+            Err(x) => return Err(exceptions::ValueError::py_err(x)),
+        };
         block_list.push(block);
     } else {
         if gap_cnt == 0 && {prev_ref != gap_char && prev_seq != gap_char} {
             if debug == true {
                 print!("| {} ", seq_cnt);
             }
-            let block = Block::new(start, seq_cnt);
+            let block = match Block::check_new(start, seq_cnt) {
+                Ok(x) => x,
+                Err(x) => return Err(exceptions::ValueError::py_err(x)),
+            };
             block_list.push(block);
         } else if gap_cnt == 0 && {prev_ref != gap_char && prev_seq == gap_char} {
             if debug == true {
@@ -545,7 +614,10 @@ pub fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Ve
     // Reconstruct string
     let new_seq: String = new_seq_array.iter().collect();
     // Reconstruct blocks
-    let new_block_list = option_array_to_blocks(abs_pos_array);
+    let new_block_list = match option_array_to_blocks(abs_pos_array) {
+        Ok(x) => x,
+        Err(x) => return Err(exceptions::ValueError::py_err(x)),
+    };
     // Return new_seq and new_block_list
     Ok((new_seq, new_block_list))
 }
