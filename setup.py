@@ -17,7 +17,7 @@ def grep_attr(body, attr):
 
 
 def parse_module_metadata():
-    with open("evogen/__init__.py", "r") as f:
+    with open("blockrs/__init__.py", "r") as f:
         body = f.read()
         return [grep_attr(body, attr) for attr in ("version", "author")]
 
@@ -50,7 +50,7 @@ def main():
     version, author = parse_module_metadata()
     description = "A simple, cross-platform GUI automation library for Python."
     setup(
-        name='evogen',
+        name='blockrs',
         # version=expand_version(version),
         version='0.2.0',
         # author=author,
@@ -81,10 +81,9 @@ def main():
         # ],
         # platforms=["macOS", "Windows", "X11"],
         rust_extensions=[
-            RustExtension('evogen_rust.block', 'Cargo.toml', binding=Binding.PyO3),
-            RustExtension('evogen_rust.fasta', 'Cargo.toml', binding=Binding.PyO3),
+            RustExtension('libblockrs.block', 'Cargo.toml', binding=Binding.PyO3),
         ],
-        packages=['evogen'],
+        packages=['blockrs'],
         zip_safe=False,  # Rust extensions are not zip safe, like C-extensions.
     )
 
