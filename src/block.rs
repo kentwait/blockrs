@@ -582,7 +582,7 @@ pub fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Ve
     // Unrolls blocks into positional array
     let block_array: Vec<i32> = match blocks_to_array(block_list) {
         Ok(x) => x,
-        Err(x) => return Err(x)
+        Err(x) => return Err(exceptions::ValueError::py_err(x)),
     };
     // absolute position array (block)
     let mut abs_pos_array: Vec<Option<i32>> = Vec::new();
@@ -590,6 +590,10 @@ pub fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Ve
     // When a seq is filled (not gap), put the corresponding block array value
     let mut x = 0;
     let mut new_seq_array: Vec<char> = seq.chars().collect();
+    // Check if new_seq_array and abs_pos_array are the same length
+    if block_array.len() != new_seq_array.len() {
+        return Err(exceptions::ValueError::py_err("sequence length and block range are not equal"))
+    }
     for c in seq.chars() {
         if c != gap_char {
             abs_pos_array.push(Some(block_array[x]));
@@ -602,6 +606,10 @@ pub fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Ve
     remove_pos_list.sort_unstable();
     remove_pos_list.reverse();
     for i in remove_pos_list {
+        // Check if i is less than array size
+        if i >= abs_pos_array.len() {
+            return Err(exceptions::IndexError::py_err("position out of range"))
+        }
         abs_pos_array.remove(i);
         new_seq_array.remove(i);
     }
