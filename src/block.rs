@@ -414,7 +414,7 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, gap_char: &str, debug:
                 if debug == true {
                     print!("- {} ", seq_cnt);
                 }
-                let block = match Block::check_new(-1, -1 - gap_cnt) {
+                let block = match Block::check_new(-1 - gap_cnt, -1) {
                     Ok(x) => x,
                     Err(x) => return Err(exceptions::ValueError::py_err(x)),
                 };
@@ -448,7 +448,7 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, gap_char: &str, debug:
                 if debug == true {
                     print!("- {} ", seq_cnt);
                 }
-                let block = match Block::check_new(-1, -1 - gap_cnt) {
+                let block = match Block::check_new(-1 - gap_cnt, -1) {
                     Ok(x) => x,
                     Err(x) => return Err(exceptions::ValueError::py_err(x)),
                 };
@@ -480,7 +480,7 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, gap_char: &str, debug:
                 if debug == true {
                     print!("- {} ", seq_cnt);
                 }
-                let block = match Block::check_new(-1, -1 - gap_cnt) {
+                let block = match Block::check_new(-1 - gap_cnt, -1) {
                     Ok(x) => x,
                     Err(x) => return Err(exceptions::ValueError::py_err(x)),
                 };
@@ -527,7 +527,7 @@ pub fn pairwise_to_blocks(ref_seq: &str, other_seq: &str, gap_char: &str, debug:
         if debug == true {
             print!("- {}", seq_cnt);
         }
-        let block = match Block::check_new(-1, -1 - gap_cnt) {
+        let block = match Block::check_new(-1 - gap_cnt, -1) {
             Ok(x) => x,
             Err(x) => return Err(exceptions::ValueError::py_err(x)),
         };
