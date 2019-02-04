@@ -6,7 +6,7 @@ from blockrs.block import array_to_blocks, blocks_to_array, pairwise_to_blocks
 from blockrs.block import remove_sites
 
 __author__ = 'Kent Kawashima'
-__version__ = '0.4.0'
+__version__ = '0.5.0'
 __all__ = ['libblock', 'Block',
            'to_block_str', 'remove_sites_from_blocks',
            'array_to_blocks', 'blocks_to_array',
