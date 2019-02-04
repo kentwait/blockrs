@@ -118,7 +118,7 @@ def to_one_index_slice(s):  # pylint: disable=invalid-name
     return slice(s.start+1, s.stop, s.step)
 
 
-def pairwise_to_blocks(ref_seq, other_seq, gapchar='-', debug=False):
+def pairwise_to_blocks(ref_seq, other_seq, gap_char='-', debug=False):
     """Creates a list of blocks as slices relativeto a reference sequence.
 
     Parameters
@@ -205,10 +205,10 @@ def pairwise_to_blocks(ref_seq, other_seq, gapchar='-', debug=False):
 
     """
     assert len(ref_seq) == len(other_seq), 'sequence lengths are not the same'
-    return libblock.pairwise_to_blocks(ref_seq, other_seq, gapchar, debug)
+    return libblock.pairwise_to_blocks(ref_seq, other_seq, gap_char, debug)
 
 
-def remove_sites(seq, block_list, removed_pos_list, gap_char="-", debug=False):
+def remove_sites(seq, block_list, removed_pos_list, gap_char='-', debug=False):
     """Removes parts of the sequence using a list of positions and
     updated associated block list.
 
