@@ -630,6 +630,45 @@ pub fn remove_sites(seq: &str, block_list: Vec<&Block>, mut remove_pos_list:  Ve
     Ok((new_seq, new_block_list))
 }
 
+#[pyfunction]
+pub fn remove_sites_from_blocks(block_list: Vec<&Block>, mut ids: Vec<usize>) -> PyResult<Vec<Block>> {
+    // Check if remove_pos_list is empty
+    if ids.len() == 0 {
+        let mut same_block_list: Vec<Block> = Vec::new();
+        for block in block_list {
+            let block = block.clone();
+            same_block_list.push(block);
+        }
+        return Ok(same_block_list)
+    }
+    // Unrolls blocks into positional array
+    let mut block_array: Vec<i32> = match blocks_to_array(block_list) {
+        Ok(x) => x,
+        Err(x) => return Err(exceptions::ValueError::py_err(x)),
+    };
+    // Remove positions
+    ids.sort_unstable();
+    ids.reverse();
+    for i in ids {
+        // Check if i is less than array size
+        if i >= block_array.len() {
+            return Err(exceptions::IndexError::py_err("position out of range"))
+        }
+        block_array.remove(i);
+    }
+    // Check if result is empty
+    if block_array.len() == 0 {
+        let empty_vec: Vec<Block> = Vec::new();
+        return Ok(empty_vec)
+    }
+    // Reconstruct blocks
+    match array_to_blocks(block_array) {
+        Ok(x) => Ok(x),
+        Err(x) => Err(exceptions::ValueError::py_err(x)),
+    }
+}
+
+
 // Register python functions to PyO3
 #[pymodinit]
 fn block(_py: Python, m: &PyModule) -> PyResult<()> {
@@ -639,6 +678,7 @@ fn block(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_function!(blocks_to_array))?;
     m.add_function(wrap_function!(pairwise_to_blocks))?;
     m.add_function(wrap_function!(remove_sites))?;
+    m.add_function(wrap_function!(remove_sites_from_blocks))?;
 
     // Add Block class
     m.add_class::<Block>()?;
