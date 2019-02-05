@@ -28,10 +28,10 @@ pub struct Block {
 }
 
 lazy_static! {
-    static ref BLOCK_LIST_REGEX: Regex = Regex::new(r"^(\d+\:\d+\;*)+$").unwrap();
-    static ref BLOCK_STR_REGEX: Regex = Regex::new(r"(?P<start>\d+)\:(?P<stop>\d+)").unwrap();
-    static ref CATBLOCK_LIST_REGEX: Regex = Regex::new(r"^([A-Za-z0-9]+\=\d+\:\d+\;*)+$").unwrap();
-    static ref CATBLOCK_STR_REGEX: Regex = Regex::new(r"(?P<name>[A-Za-z0-9]+)\=(?P<start>\d+)\:(?P<stop>\d+)").unwrap();
+    static ref BLOCK_LIST_REGEX: Regex = Regex::new(r"^(\x2D*\d+\x3A\x2D*\d+\x3B*)+$").unwrap();
+    static ref BLOCK_STR_REGEX: Regex = Regex::new(r"(?P<start>\x2D*\d+)\x3A(?P<stop>\x2D*\d+)").unwrap();
+    static ref CATBLOCK_LIST_REGEX: Regex = Regex::new(r"^([A-Za-z0-9]+\x3D\x2D*\d+\x3A\x2D*\d+\x3B*)+$").unwrap();
+    static ref CATBLOCK_STR_REGEX: Regex = Regex::new(r"(?P<name>[A-Za-z0-9]+)\x3D(?P<start>\x2D*\d+)\x3A(?P<stop>\x2D*\d+)").unwrap();
 }
 
 #[pymethods]
@@ -89,7 +89,7 @@ impl PyObjectProtocol for Block {
 /// Converts a block string into a list of Blocks.
 fn from_block_str(data_str: &str) -> PyResult<Vec<Block>> {
     if !BLOCK_LIST_REGEX.is_match(data_str) {
-        return Err(exceptions::ValueError::py_err("does not match block list string formatting"))
+        return Err(exceptions::ValueError::py_err(format!("\"{}\" does not match block list string formatting", data_str)))
     }
     // Declare variables
     let mut block_list: Vec<Block> = Vec::new();
@@ -753,7 +753,7 @@ impl CatBlock {
 /// Converts a block string into a list of Blocks.
 fn from_catblock_str(data_str: &str) -> PyResult<Vec<CatBlock>> {
     if !CATBLOCK_LIST_REGEX.is_match(data_str) {
-        return Err(exceptions::ValueError::py_err("does not match catblock list string formatting"))
+        return Err(exceptions::ValueError::py_err(format!("\"{}\" does not match block list string formatting", data_str)))
     }
     // Declare variables
     let mut catblock_list: Vec<CatBlock> = Vec::new();
