@@ -684,6 +684,111 @@ pub fn remove_sites_from_blocks(block_list: Vec<&Block>, mut ids: Vec<usize>) ->
     }
 }
 
+#[pyclass]
+// #[derive(Copy, Clone)]
+pub struct CatBlock {
+
+    #[prop(get, set)]
+    pub name: String,
+
+    #[prop(get, set)]
+    pub start: i32,
+
+    #[prop(get, set)]
+    pub stop: i32,
+}
+
+impl CatBlock {
+    pub fn new(name: &str, start: i32, stop: i32) -> CatBlock {
+        let name = name.to_string();
+        CatBlock { name, start, stop }
+    }
+    pub fn check_new(name: &str, start: i32, stop: i32) -> Result<CatBlock, &'static str> {
+        if stop < start {
+            return Err("stop cannot be less than start")
+        }
+        Ok(CatBlock::new(name, start, stop))
+    }
+}
+
+#[pyproto]
+impl PyObjectProtocol for CatBlock {
+    fn __repr__(&self) -> PyResult<String> {
+        Ok(format!("CatBlock[{}]({}, {})", name=self.name, start=self.start, stop=self.stop))
+    }
+
+    fn __str__(&self) -> PyResult<String> {
+        Ok(format!("{name}={start}:{stop}", name=self.name, start=self.start, stop=self.stop))
+    }
+}
+
+#[pymethods]
+impl CatBlock {
+    #[new]
+    /// Creates a new Block object from start and stop values.
+    fn __new__(obj: &PyRawObject, name: &str, start: i32, stop: i32) -> PyResult<()> {
+        if stop < start {
+            return Err(exceptions::ValueError::py_err("stop cannot be less than start"))
+        }
+        let name = name.to_string();
+        obj.init(|_| {
+            CatBlock { name, start, stop }
+        })
+    }
+
+    #[staticmethod]
+    fn from_block_str(data_str: &str) -> PyResult<Vec<Block>> {
+        from_block_str(data_str)
+    }
+
+    #[staticmethod]
+    fn to_block_str(block_list: Vec<&Block>) -> PyResult<String> {
+        to_block_str(block_list)
+    }
+}
+
+#[pyfunction]
+/// from_catblock_str(data_str)
+/// 
+/// Converts a block string into a list of Blocks.
+fn from_catblock_str(data_str: &str) -> PyResult<Vec<CatBlock>> {
+    if !CATBLOCK_LIST_REGEX.is_match(data_str) {
+        return Err(exceptions::ValueError::py_err("does not match catblock list string formatting"))
+    }
+    // Declare variables
+    let mut catblock_list: Vec<CatBlock> = Vec::new();
+
+    // Match regexp
+    for caps in CATBLOCK_STR_REGEX.captures_iter(data_str) {
+        let start = match caps["start"].parse::<i32>() {
+            Ok(i) => i,
+            Err(error) => return Err(exceptions::ValueError::py_err(format!("cannot convert start value from &str to i32: {:?} ", error))),
+        };
+        let stop = match caps["stop"].parse::<i32>() {
+            Ok(i) => i,
+            Err(error) => return Err(exceptions::ValueError::py_err(format!("cannot convert stop value from &str to i32: {:?} ", error))),
+        };
+        let block = match CatBlock::check_new(&caps["name"], start, stop) {
+            Ok(x) => x,
+            Err(x) => return Err(exceptions::ValueError::py_err(x)),
+        };
+        catblock_list.push(block)
+    }
+    Ok(catblock_list)
+}
+
+#[pyfunction]
+/// to_catblock_str(block_list)
+/// 
+/// Converts a list of Blocks into a block string.
+fn to_catblock_str(catblock_list: Vec<&CatBlock>) -> PyResult<String> {
+    let mut catblock_str_vec: Vec<String> = Vec::new();
+    for catblock in catblock_list {
+        let substr = format!("{}:{}", catblock.start, catblock.stop);
+        catblock_str_vec.push(substr);
+    }
+    Ok(catblock_str_vec.join(";"))
+}
 
 // Register python functions to PyO3
 #[pymodinit]
@@ -695,6 +800,8 @@ fn block(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_function!(pairwise_to_blocks))?;
     m.add_function(wrap_function!(remove_sites))?;
     m.add_function(wrap_function!(remove_sites_from_blocks))?;
+    m.add_function(wrap_function!(from_catblock_str))?;
+    m.add_function(wrap_function!(to_catblock_str))?;
 
     // Add Block class
     m.add_class::<Block>()?;
