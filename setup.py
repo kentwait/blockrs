@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name='blockrs',
     author='Kent Kawashima',
-    version='0.5.0',
+    version='0.6.0',
     author_email='kentkawashima@gmail.com',
     description='Encode and decode alignment blocks',
     long_description=long_description,
