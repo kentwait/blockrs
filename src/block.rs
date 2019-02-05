@@ -784,7 +784,7 @@ fn from_catblock_str(data_str: &str) -> PyResult<Vec<CatBlock>> {
 fn to_catblock_str(catblock_list: Vec<&CatBlock>) -> PyResult<String> {
     let mut catblock_str_vec: Vec<String> = Vec::new();
     for catblock in catblock_list {
-        let substr = format!("{}:{}", catblock.start, catblock.stop);
+        let substr = format!("[{}]={}:{}", catblock.name, catblock.start, catblock.stop);
         catblock_str_vec.push(substr);
     }
     Ok(catblock_str_vec.join(";"))
