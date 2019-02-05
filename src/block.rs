@@ -805,6 +805,7 @@ fn block(_py: Python, m: &PyModule) -> PyResult<()> {
 
     // Add Block class
     m.add_class::<Block>()?;
+    m.add_class::<CatBlock>()?;
 
     Ok(())
 }
