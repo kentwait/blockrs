@@ -48,12 +48,12 @@ impl Block {
     }
 
     #[staticmethod]
-    fn from_block_str(data_str: &str) -> PyResult<Vec<Block>> {
+    fn from_str(data_str: &str) -> PyResult<Vec<Block>> {
         from_block_str(data_str)
     }
 
     #[staticmethod]
-    fn to_block_str(block_list: Vec<&Block>) -> PyResult<String> {
+    fn to_str(block_list: Vec<&Block>) -> PyResult<String> {
         to_block_str(block_list)
     }
 }
@@ -737,13 +737,13 @@ impl CatBlock {
     }
 
     #[staticmethod]
-    fn from_block_str(data_str: &str) -> PyResult<Vec<Block>> {
-        from_block_str(data_str)
+    fn from_str(data_str: &str) -> PyResult<Vec<CatBlock>> {
+        from_catblock_str(data_str)
     }
 
     #[staticmethod]
-    fn to_block_str(block_list: Vec<&Block>) -> PyResult<String> {
-        to_block_str(block_list)
+    fn to_str(catblock_list: Vec<&CatBlock>) -> PyResult<String> {
+        to_catblock_str(catblock_list)
     }
 }
 
