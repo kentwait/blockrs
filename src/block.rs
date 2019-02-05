@@ -4,6 +4,8 @@ use pyo3::{PyObjectProtocol, exceptions};
 use std::str;
 use std::io::Write;
 
+use regex::Regex;
+
 #[pyclass]
 #[derive(Copy, Clone)]
 /// Block(start, stop)
@@ -23,6 +25,13 @@ pub struct Block {
 
     #[prop(get, set)]
     pub stop: i32,
+}
+
+lazy_static! {
+    static ref BLOCK_LIST_REGEX: Regex = Regex::new(r"^(\d+\:\d+\;*)+$").unwrap();
+    static ref BLOCK_STR_REGEX: Regex = Regex::new(r"(?P<start>\d+)\:(?P<stop>\d+)").unwrap();
+    static ref CATBLOCK_LIST_REGEX: Regex = Regex::new(r"^([A-Za-z0-9]+\=\d+\:\d+\;*)+$").unwrap();
+    static ref CATBLOCK_STR_REGEX: Regex = Regex::new(r"(?P<name>[A-Za-z0-9]+)\=(?P<start>\d+)\:(?P<stop>\d+)").unwrap();
 }
 
 #[pymethods]
@@ -79,46 +88,53 @@ impl PyObjectProtocol for Block {
 /// 
 /// Converts a block string into a list of Blocks.
 fn from_block_str(data_str: &str) -> PyResult<Vec<Block>> {
+    if !BLOCK_LIST_REGEX.is_match(data_str) {
+        return Err(exceptions::ValueError::py_err("does not match block list string formatting"))
+    }
     // Declare variables
     let mut block_list: Vec<Block> = Vec::new();
 
-    // // Check if '_' exists
-    // // Split str at '_' and get last substr
-    // let coords_str = match data_str.rfind('_') {
-    //     Some(i) => {
-    //         let (_, string) = data_str.split_at(i);
-    //         string.trim_start_matches('_')
-    //     },
-    //     None => data_str
-    // };
-    let coords_str = data_str;
-
-    // TODO: Use regexp to check if coords_str is ^(\d+\:\d+\;*)+$
-
-    // Split substr by ';'
-    // For each split
-    for start_stop in coords_str.split(';').collect::<Vec<&str>>() {
-        // split again by ':' and convert to int
-        let sep_idx = match start_stop.rfind(':') {
-            Some(x) => x,
-            None => return Err(exceptions::ValueError::py_err("separator \":\" not found"))
-        };
-        let (start, stop) = start_stop.split_at(sep_idx);
-        let start = match start.parse::<i32>() {
+    // Match regexp
+    for caps in BLOCK_STR_REGEX.captures_iter(data_str) {
+        let start = match caps["start"].parse::<i32>() {
             Ok(i) => i,
             Err(error) => return Err(exceptions::ValueError::py_err(format!("cannot convert start value from &str to i32: {:?} ", error))),
         };
-        let stop = match stop.trim_start_matches(':').parse::<i32>() {
+        let stop = match caps["stop"].parse::<i32>() {
             Ok(i) => i,
-            Err(error) => return Err(exceptions::ValueError::py_err(format!("cannot convert end value from &str to i32: {:?} ", error))),
+            Err(error) => return Err(exceptions::ValueError::py_err(format!("cannot convert stop value from &str to i32: {:?} ", error))),
         };
-        // Create block and push to blocklist
         let block = match Block::check_new(start, stop) {
             Ok(x) => x,
             Err(x) => return Err(exceptions::ValueError::py_err(x)),
         };
         block_list.push(block)
     }
+
+    // Split substr by ';'
+    // For each split
+    // for start_stop in coords_str.split(';').collect::<Vec<&str>>() {
+    //     // split again by ':' and convert to int
+    //     let sep_idx = match start_stop.rfind(':') {
+    //         Some(x) => x,
+    //         None => return Err(exceptions::ValueError::py_err("separator \":\" not found"))
+    //     };
+    //     let (start, stop) = start_stop.split_at(sep_idx);
+    //     let start = match start.parse::<i32>() {
+    //         Ok(i) => i,
+    //         Err(error) => return Err(exceptions::ValueError::py_err(format!("cannot convert start value from &str to i32: {:?} ", error))),
+    //     };
+    //     let stop = match stop.trim_start_matches(':').parse::<i32>() {
+    //         Ok(i) => i,
+    //         Err(error) => return Err(exceptions::ValueError::py_err(format!("cannot convert end value from &str to i32: {:?} ", error))),
+    //     };
+    //     // Create block and push to blocklist
+    //     let block = match Block::check_new(start, stop) {
+    //         Ok(x) => x,
+    //         Err(x) => return Err(exceptions::ValueError::py_err(x)),
+    //     };
+    //     block_list.push(block)
+    // }
     // Returns block_list
     Ok(block_list)
 }
