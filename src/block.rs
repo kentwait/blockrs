@@ -40,7 +40,7 @@ impl Block {
     /// Creates a new Block object from start and stop values.
     fn __new__(obj: &PyRawObject, start: i32, stop: i32) -> PyResult<()> {
         if stop < start {
-            return Err(exceptions::ValueError::py_err("stop cannot be less than start"))
+            return Err(exceptions::ValueError::py_err(format!("start cannot be greater than stop: {} !< {}", start, stop)))
         }
         obj.init(|_| {
             Block { start, stop }
@@ -65,7 +65,7 @@ impl Block {
     }
     pub fn check_new(start: i32, stop: i32) -> Result<Block, &'static str> {
         if stop < start {
-            return Err("stop cannot be less than start")
+            return Err("error creating a new Block: start cannot be greater than stop")
         }
         Ok(Block::new(start, stop))
     }
@@ -705,7 +705,7 @@ impl CatBlock {
     }
     pub fn check_new(name: &str, start: i32, stop: i32) -> Result<CatBlock, &'static str> {
         if stop < start {
-            return Err("stop cannot be less than start")
+            return Err("error creating a new CatBlock: start cannot be greater than stop")
         }
         Ok(CatBlock::new(name, start, stop))
     }
@@ -728,7 +728,7 @@ impl CatBlock {
     /// Creates a new Block object from start and stop values.
     fn __new__(obj: &PyRawObject, name: &str, start: i32, stop: i32) -> PyResult<()> {
         if stop < start {
-            return Err(exceptions::ValueError::py_err("stop cannot be less than start"))
+            return Err(exceptions::ValueError::py_err(format!("start cannot be greater than stop: {} !< {}", start, stop)))
         }
         let name = name.to_string();
         obj.init(|_| {
