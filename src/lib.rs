@@ -2,6 +2,10 @@
 
 #[macro_use]
 extern crate pyo3;
+extern crate regex;
+#[macro_use]
+extern crate lazy_static;
+
 
 pub mod block;
 
